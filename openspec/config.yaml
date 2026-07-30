@@ -1,0 +1,72 @@
+schema: spec-driven
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+context: |
+  Objectif du projet (résumé de @PRD.md) :
+  Insight Hub est un outil de social listening : centraliser des messages en ligne sur une marque
+  (mot-clé simulé, avec comparaison possible à deux mots-clés), analyser leur sentiment (3 classes,
+  recalculé par l'IA) et leurs thèmes (5-8, détectés par l'IA) via l'IA, et produire un dashboard +
+  rapport de synthèse exploitable pour un responsable marketing/communication. Écoute réactive
+  (données déjà collectées, pas de détection temps réel), granularité journalière, pas d'alerting
+  automatique (email/Slack). Un insight actionnable = toujours un chiffre + une comparaison + un
+  exemple concret cité. Ordre de construction imposé par les dépendances : sentiment IA → thèmes IA
+  → synthèse finale. MVP → V1 → V2 définis dans le PRD (voir section 4).
+
+  Architecture globale (résumé de @ARCHITECTURE.md) :
+  Deux projets Vercel séparés communiquant en HTTP, partageant une base Neon Postgres commune :
+  - insight-hub-web : frontend Next.js (App Router, TypeScript), dashboard (vue santé de la marque,
+    filtres croisés, comparaisons temporelle/géographique/mots-clés, recherche plein texte, favoris,
+    nuage de mots, timeline), export PDF (@react-pdf/renderer). Accès direct à Neon via Drizzle
+    (schéma possédé exclusivement ici, migrations via drizzle-kit).
+  - insight-hub-pipeline : service Python (≥3.12, géré avec uv), fonctions serverless Vercel. Porte
+    l'import CSV, la normalisation/déduplication, le filtrage par mot-clé, et les appels IA (SDK
+    Anthropic Python) pour sentiment/thèmes/résumé exécutif. Orchestré via Vercel Workflows
+    (@wf.workflow / @wf.step) pour respecter l'ordre de dépendances et contourner les limites de durée
+    d'exécution serverless. Accès à Neon en lecture/écriture SQL simple (psycopg/SQLAlchemy Core),
+    jamais de modification de schéma.
+  - Authentification inter-services par bearer token secret partagé (variable d'environnement).
+    Upload CSV envoyé directement au pipeline (bascule vers Vercel Blob au-delà de 4.5 Mo).
+
+  Style visuel :
+  - Interface claire et minimaliste
+
+  Contraintes et politiques :
+  - NE JAMAIS exposer les clés API au client
+
+  Dépendances :
+  - Préférer les composants existants plutôt que d'ajouter de nouvelles bibliothèques UI
+
+  À la fin de chaque développement qui implique l'interface graphique :
+  - Tester avec Playwright, l'interface doit être responsive, fonctionnelle et répondre au besoin
+    développé
+
+  Documentation :
+  - PRD : @PRD.md
+  - Architecture : @ARCHITECTURE.md
+
+  Context7 :
+  Utilise toujours Context7 lorsque j'ai besoin de génération de code, d'étapes de configuration ou
+  d'installation, ou de documentation de bibliothèque/API. Utilise automatiquement les outils MCP
+  Context7 sans que j'aie à le demander explicitement.
+
+  Note : Toutes les spécifications doivent être rédigées en français, y compris les specs OpenSpec
+  (sections Purpose et Scenarios). Seuls les titres de Requirements doivent rester en anglais avec
+  les mots-clés SHALL/MUST pour la validation OpenSpec.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
