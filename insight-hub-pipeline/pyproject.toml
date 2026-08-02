@@ -1,0 +1,32 @@
+[project]
+name = "insight-hub-pipeline"
+version = "0.1.0"
+description = "Insight Hub data pipeline: CSV ingestion, normalization, AI analysis"
+readme = "README.md"
+authors = [
+    { name = "Manar MERGHICH", email = "manarmerghich05@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "python-multipart>=0.0.12",
+    "psycopg[binary]>=3.2.0",
+    "httpx>=0.27.0",
+    "python-dateutil>=2.9.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "integration: exercises a real ephemeral Postgres container via testcontainers (requires Docker)",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "testcontainers[postgres]>=4.15.0",
+    "uvicorn[standard]>=0.52.1",
+]

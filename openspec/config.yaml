@@ -36,7 +36,23 @@ context: |
     Upload CSV envoyé directement au pipeline (bascule vers Vercel Blob au-delà de 4.5 Mo).
 
   Style visuel :
-  - Interface claire et minimaliste
+  - Interface moderne, professionnelle et épurée, avec des cartes élégantes (fond blanc, ombre
+    légère, coins arrondis) sur un fond neutre clair.
+  - Palette de couleurs précise, à réutiliser telle quelle (variables CSS dans globals.css) pour
+    toute nouvelle fonctionnalité :
+    - Primary (actions principales, liens, focus) : #2563EB
+    - Secondary (accents, éléments secondaires) : #7C3AED
+    - Success (états positifs, confirmations) : #22C55E
+    - Warning (avertissements) : #F59E0B
+    - Error (erreurs, échecs) : #EF4444
+    - Background (fond de page) : #F8FAFC
+    - Cards (fond des cartes/panneaux) : #FFFFFF
+    - Text (texte principal) : #0F172A
+  - Boutons colorés (fond Primary, texte blanc), avec états hover/active/focus/disabled visibles.
+  - Contraste suffisant pour l'accessibilité (WCAG AA) : Success/Warning/Error s'utilisent en fond
+    teinté clair avec un texte plus foncé de la même teinte (jamais en texte blanc sur fond plein,
+    le contraste serait insuffisant), Primary/Secondary en fond plein avec texte blanc (contraste
+    validé).
 
   Contraintes et politiques :
   - NE JAMAIS exposer les clés API au client

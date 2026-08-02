@@ -1,0 +1,41 @@
+import { integer, pgTable, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
+
+export const importRuns = pgTable("import_runs", {
+  id: serial("id").primaryKey(),
+  keyword: text("keyword").notNull(),
+  sourceFilename: text("source_filename").notNull(),
+  status: text("status").notNull().default("running"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  // Messages matching the keyword, before dedup — distinct from retainedCount
+  // (newly inserted after dedup), so the UI can tell "no match" from "already imported".
+  matchedCount: integer("matched_count"),
+  retainedCount: integer("retained_count"),
+  errorMessage: text("error_message"),
+});
+
+export const messages = pgTable(
+  "messages",
+  {
+    id: serial("id").primaryKey(),
+    runId: integer("run_id")
+      .notNull()
+      .references(() => importRuns.id),
+    source: text("source").notNull(),
+    collectedAt: timestamp("collected_at", { withTimezone: true }).notNull().defaultNow(),
+    text: text("text").notNull(),
+    sentimentOriginal: text("sentiment_original"),
+    timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+    user: text("user").notNull(),
+    platform: text("platform").notNull(),
+    hashtags: text("hashtags"),
+    retweets: integer("retweets"),
+    likes: integer("likes"),
+    country: text("country"),
+    keyword: text("keyword").notNull(),
+  },
+  (table) => [
+    // Dedup key per design.md: platform + author + normalized text + timestamp.
+    unique("messages_dedup_key").on(table.platform, table.user, table.text, table.timestamp),
+  ],
+);
