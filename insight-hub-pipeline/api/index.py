@@ -6,7 +6,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 
 from app.auth import verify_bearer_token
 from app.db import create_import_run, get_connection, update_run_status
-from app.workflows import run_import_pipeline
+from app.workflows import run_import_pipeline, run_sentiment_classification
 
 app = FastAPI()
 
@@ -53,3 +53,10 @@ async def create_import(
     )
 
     return {"run_id": run_id, "status": result["status"]}
+
+
+@app.post("/api/sentiment/runs")
+async def create_sentiment_run_endpoint(request: Request):
+    verify_bearer_token(request)
+    result = await run_sentiment_classification()
+    return result

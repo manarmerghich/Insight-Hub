@@ -1,4 +1,4 @@
-import { integer, pgTable, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
+import { integer, numeric, pgTable, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
 
 export const importRuns = pgTable("import_runs", {
   id: serial("id").primaryKey(),
@@ -25,6 +25,9 @@ export const messages = pgTable(
     collectedAt: timestamp("collected_at", { withTimezone: true }).notNull().defaultNow(),
     text: text("text").notNull(),
     sentimentOriginal: text("sentiment_original"),
+    sentiment: text("sentiment"),
+    sentimentStatus: text("sentiment_status").notNull().default("pending"),
+    sentimentError: text("sentiment_error"),
     timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
     user: text("user").notNull(),
     platform: text("platform").notNull(),
@@ -39,3 +42,34 @@ export const messages = pgTable(
     unique("messages_dedup_key").on(table.platform, table.user, table.text, table.timestamp),
   ],
 );
+
+export const sentimentRuns = pgTable("sentiment_runs", {
+  id: serial("id").primaryKey(),
+  status: text("status").notNull().default("running"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  processedCount: integer("processed_count"),
+  errorCount: integer("error_count"),
+});
+
+export const sentimentValidationRuns = pgTable("sentiment_validation_runs", {
+  id: serial("id").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  sampleSizePerClass: integer("sample_size_per_class").notNull(),
+  status: text("status").notNull().default("sampled"),
+  agreementRate: numeric("agreement_rate", { precision: 5, scale: 4 }),
+});
+
+export const sentimentValidationSamples = pgTable("sentiment_validation_samples", {
+  id: serial("id").primaryKey(),
+  validationRunId: integer("validation_run_id")
+    .notNull()
+    .references(() => sentimentValidationRuns.id),
+  messageId: integer("message_id")
+    .notNull()
+    .references(() => messages.id),
+  // Snapshot at sampling time — the message's own sentiment may be
+  // recomputed later, but the sample must stay comparable to what was annotated.
+  sentimentAi: text("sentiment_ai").notNull(),
+  sentimentManual: text("sentiment_manual"),
+});

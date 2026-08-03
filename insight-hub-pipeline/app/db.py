@@ -43,3 +43,31 @@ def update_run_status(
             ),
         )
     conn.commit()
+
+
+def create_sentiment_run(conn: psycopg.Connection) -> int:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO sentiment_runs (status, started_at) VALUES ('running', %s) RETURNING id",
+            (datetime.now(timezone.utc),),
+        )
+        run_id = cur.fetchone()[0]
+    conn.commit()
+    return run_id
+
+
+def finalize_sentiment_run(
+    conn: psycopg.Connection,
+    run_id: int,
+    status: str,
+    *,
+    processed_count: int,
+    error_count: int,
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE sentiment_runs SET status = %s, processed_count = %s, error_count = %s, "
+            "finished_at = %s WHERE id = %s",
+            (status, processed_count, error_count, datetime.now(timezone.utc), run_id),
+        )
+    conn.commit()

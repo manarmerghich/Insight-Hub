@@ -1,7 +1,8 @@
-from app.db import get_connection, update_run_status
+from app.db import create_sentiment_run, finalize_sentiment_run, get_connection, update_run_status
 from app.dedup import insert_messages
 from app.filtering import matches_keyword
 from app.normalize import normalize_row
+from app.sentiment import run_classification
 
 
 async def normalize_step(*, rows: list[dict]) -> list[dict]:
@@ -69,3 +70,26 @@ async def run_import_pipeline(
     except Exception as exc:
         await finalize_error_step(run_id=run_id, error_message=str(exc))
         return {"status": "error", "error_message": str(exc)}
+
+
+async def run_sentiment_classification() -> dict:
+    # Same plain-sequential rationale as run_import_pipeline: no durable
+    # orchestration, resumable via the per-message sentiment_status column.
+    conn = get_connection()
+    try:
+        run_id = create_sentiment_run(conn)
+        try:
+            result = run_classification(conn)
+            finalize_sentiment_run(
+                conn,
+                run_id,
+                "completed",
+                processed_count=result["processed_count"],
+                error_count=result["error_count"],
+            )
+            return {"run_id": run_id, "status": "completed", **result}
+        except Exception as exc:
+            finalize_sentiment_run(conn, run_id, "error", processed_count=0, error_count=0)
+            return {"run_id": run_id, "status": "error", "error_message": str(exc)}
+    finally:
+        conn.close()
