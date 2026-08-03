@@ -38,7 +38,7 @@ def postgres_dsn():
 @pytest.fixture
 def db_conn(postgres_dsn):
     with psycopg.connect(postgres_dsn) as conn:
-        conn.execute("TRUNCATE TABLE messages, import_runs RESTART IDENTITY CASCADE")
+        conn.execute("TRUNCATE TABLE messages, import_runs, themes RESTART IDENTITY CASCADE")
         conn.commit()
     conn = psycopg.connect(postgres_dsn)
     yield conn

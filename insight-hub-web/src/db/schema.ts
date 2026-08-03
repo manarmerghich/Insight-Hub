@@ -28,6 +28,9 @@ export const messages = pgTable(
     sentiment: text("sentiment"),
     sentimentStatus: text("sentiment_status").notNull().default("pending"),
     sentimentError: text("sentiment_error"),
+    themeId: integer("theme_id").references(() => themes.id),
+    themeStatus: text("theme_status").notNull().default("pending"),
+    themeError: text("theme_error"),
     timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
     user: text("user").notNull(),
     platform: text("platform").notNull(),
@@ -44,6 +47,22 @@ export const messages = pgTable(
 );
 
 export const sentimentRuns = pgTable("sentiment_runs", {
+  id: serial("id").primaryKey(),
+  status: text("status").notNull().default("running"),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  processedCount: integer("processed_count"),
+  errorCount: integer("error_count"),
+});
+
+export const themes = pgTable("themes", {
+  id: serial("id").primaryKey(),
+  label: text("label").notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const themeRuns = pgTable("theme_runs", {
   id: serial("id").primaryKey(),
   status: text("status").notNull().default("running"),
   startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),

@@ -71,3 +71,31 @@ def finalize_sentiment_run(
             (status, processed_count, error_count, datetime.now(timezone.utc), run_id),
         )
     conn.commit()
+
+
+def create_theme_run(conn: psycopg.Connection) -> int:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO theme_runs (status, started_at) VALUES ('running', %s) RETURNING id",
+            (datetime.now(timezone.utc),),
+        )
+        run_id = cur.fetchone()[0]
+    conn.commit()
+    return run_id
+
+
+def finalize_theme_run(
+    conn: psycopg.Connection,
+    run_id: int,
+    status: str,
+    *,
+    processed_count: int,
+    error_count: int,
+) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE theme_runs SET status = %s, processed_count = %s, error_count = %s, "
+            "finished_at = %s WHERE id = %s",
+            (status, processed_count, error_count, datetime.now(timezone.utc), run_id),
+        )
+    conn.commit()

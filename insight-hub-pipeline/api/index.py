@@ -6,7 +6,11 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 
 from app.auth import verify_bearer_token
 from app.db import create_import_run, get_connection, update_run_status
-from app.workflows import run_import_pipeline, run_sentiment_classification
+from app.workflows import (
+    run_import_pipeline,
+    run_sentiment_classification,
+    run_theme_classification_step,
+)
 
 app = FastAPI()
 
@@ -59,4 +63,11 @@ async def create_import(
 async def create_sentiment_run_endpoint(request: Request):
     verify_bearer_token(request)
     result = await run_sentiment_classification()
+    return result
+
+
+@app.post("/api/themes/runs")
+async def create_theme_run_endpoint(request: Request):
+    verify_bearer_token(request)
+    result = await run_theme_classification_step()
     return result
