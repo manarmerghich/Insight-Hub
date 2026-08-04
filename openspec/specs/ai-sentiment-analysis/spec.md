@@ -2,12 +2,10 @@
 
 ## Purpose
 
-Recalculer, de façon homogène, le sentiment de chaque message déjà importé en 3 classes (positif/négatif/neutre) via le SDK Anthropic, sans jamais utiliser l'émotion d'origine du CSV (`sentiment_original`) dans ce calcul — celle-ci reste une donnée secondaire, conservée telle quelle. Cette capacité est le socle de tous les KPIs de sentiment prévus au PRD.
-
+Recalculer, de façon homogène, le sentiment de chaque message déjà importé en 3 classes (positif/négatif/neutre) via un SDK IA avec sortie structurée (actuellement : SDK Gemini, `google-genai`), sans jamais utiliser l'émotion d'origine du CSV (`sentiment_original`) dans ce calcul — celle-ci reste une donnée secondaire, conservée telle quelle. Cette capacité est le socle de tous les KPIs de sentiment prévus au PRD.
 ## Requirements
-
 ### Requirement: Sentiment Reclassification
-Le système SHALL classer chaque message n'ayant pas encore de sentiment recalculé (`sentiment_status = 'pending'` ou `'error'`) dans l'une des 3 classes suivantes : positif, négatif, neutre, via un appel au SDK Anthropic.
+Le système SHALL classer chaque message n'ayant pas encore de sentiment recalculé (`sentiment_status = 'pending'` ou `'error'`) dans l'une des 3 classes suivantes : positif, négatif, neutre, via un appel à un SDK IA avec sortie structurée (actuellement : SDK Gemini, `google-genai`).
 
 #### Scenario: Message en attente de classification
 - **WHEN** un message a `sentiment_status = 'pending'`
@@ -41,3 +39,19 @@ Le système SHALL enregistrer chaque invocation de l'étape de classification co
 #### Scenario: Run terminé
 - **WHEN** une invocation de l'étape de classification se termine, qu'elle ait traité tout ou partie des messages en attente
 - **THEN** un enregistrement de run est consultable en base avec le nombre de messages traités avec succès et le nombre de messages en erreur pour cette invocation
+
+### Requirement: Automatic Trigger After Import
+Le système SHALL déclencher automatiquement l'étape de classification de sentiment juste après qu'un run d'import ait inséré au moins un nouveau message, sans action manuelle de l'utilisateur.
+
+#### Scenario: Import réussi avec au moins un nouveau message
+- **WHEN** un run d'import se termine avec succès et a inséré au moins un nouveau message
+- **THEN** le système déclenche immédiatement l'étape de classification de sentiment, dans la foulée du run d'import
+
+#### Scenario: Import sans nouveau message
+- **WHEN** un run d'import se termine avec succès mais n'a inséré aucun nouveau message (doublons, aucune correspondance de mot-clé)
+- **THEN** le système ne déclenche pas de nouvelle classification de sentiment
+
+#### Scenario: Échec de la classification déclenchée automatiquement
+- **WHEN** la classification de sentiment déclenchée automatiquement échoue
+- **THEN** le statut du run d'import reste inchangé (`completed`) — l'échec de la classification n'est jamais reporté sur le statut de l'import
+

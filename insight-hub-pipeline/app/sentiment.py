@@ -1,43 +1,40 @@
+import json
 import os
 import time
 
-import anthropic
+from google import genai
 
 BATCH_SIZE = 25
 TIME_BUDGET_SECONDS = 45
 VALID_SENTIMENTS = {"positif", "négatif", "neutre"}
 
-CLASSIFY_TOOL = {
-    "name": "classify_sentiment",
-    "description": "Enregistre le sentiment (positif, négatif ou neutre) de chaque message du lot.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "results": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "integer"},
-                        "sentiment": {
-                            "type": "string",
-                            "enum": ["positif", "négatif", "neutre"],
-                        },
+CLASSIFY_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "results": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "integer"},
+                    "sentiment": {
+                        "type": "string",
+                        "enum": ["positif", "négatif", "neutre"],
                     },
-                    "required": ["id", "sentiment"],
-                    "additionalProperties": False,
                 },
+                "required": ["id", "sentiment"],
             },
         },
-        "required": ["results"],
-        "additionalProperties": False,
     },
-    "strict": True,
+    "required": ["results"],
 }
 
 
 def get_model() -> str:
-    return os.environ.get("ANTHROPIC_SENTIMENT_MODEL", "claude-haiku-4-5")
+    # gemini-2.5-flash-lite is rejected (404) for API keys created after its
+    # cutoff — confirmed against a real key — so default to the stable
+    # "-latest" alias instead of a pinned version.
+    return os.environ.get("GEMINI_SENTIMENT_MODEL", "gemini-flash-lite-latest")
 
 
 def fetch_pending_messages(conn, *, limit: int) -> list[dict]:
@@ -51,27 +48,23 @@ def fetch_pending_messages(conn, *, limit: int) -> list[dict]:
     return [{"id": row[0], "text": row[1]} for row in rows]
 
 
-def classify_batch(client: anthropic.Anthropic, model: str, batch: list[dict]) -> dict[int, str]:
+def classify_batch(client: genai.Client, model: str, batch: list[dict]) -> dict[int, str]:
     prompt_lines = "\n".join(f"- id {m['id']}: {m['text']}" for m in batch)
-    response = client.messages.create(
+    response = client.models.generate_content(
         model=model,
-        max_tokens=4096,
-        tools=[CLASSIFY_TOOL],
-        tool_choice={"type": "tool", "name": "classify_sentiment"},
-        messages=[
-            {
-                "role": "user",
-                "content": (
-                    "Classe chaque message ci-dessous en positif, négatif ou neutre, "
-                    "d'après son contenu uniquement. Un résultat par identifiant.\n\n"
-                    f"{prompt_lines}"
-                ),
-            }
-        ],
+        contents=(
+            "Classe chaque message ci-dessous en positif, négatif ou neutre, "
+            "d'après son contenu uniquement. Un résultat par identifiant.\n\n"
+            f"{prompt_lines}"
+        ),
+        config={
+            "response_mime_type": "application/json",
+            "response_json_schema": CLASSIFY_SCHEMA,
+        },
     )
-    tool_use = next(block for block in response.content if block.type == "tool_use")
+    payload = json.loads(response.text)
     results: dict[int, str] = {}
-    for entry in tool_use.input["results"]:
+    for entry in payload["results"]:
         if entry["sentiment"] in VALID_SENTIMENTS:
             results[entry["id"]] = entry["sentiment"]
     return results
@@ -106,7 +99,7 @@ def run_classification(conn, *, deadline: float | None = None, client=None) -> d
         deadline = time.monotonic() + TIME_BUDGET_SECONDS
 
     if client is None:
-        client = anthropic.Anthropic()
+        client = genai.Client()
     model = get_model()
     processed_count = 0
     error_count = 0

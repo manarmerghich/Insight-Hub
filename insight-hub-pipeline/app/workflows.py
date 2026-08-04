@@ -53,7 +53,7 @@ async def finalize_error_step(*, run_id: int, error_message: str) -> None:
 
 
 async def run_import_pipeline(
-    *, run_id: int, keyword: str, source_filename: str, rows: list[dict]
+    *, run_id: int, keyword: str, source_filename: str, rows: list[dict], sentiment_client=None
 ) -> dict:
     # Plain sequential pipeline: no durable orchestration (Vercel Workflows'
     # Python SDK is beta and its dispatch can't be exercised locally/CI —
@@ -74,20 +74,30 @@ async def run_import_pipeline(
             matched_count=result["matched_count"],
             retained_count=result["inserted_count"],
         )
+        if result["inserted_count"] > 0:
+            # Auto-trigger sentiment classification right after a successful
+            # import that actually added messages, so the dashboard's net
+            # sentiment KPI is populated without a separate manual call.
+            # run_sentiment_classification() never raises (it records its own
+            # failures on the sentiment run), so it can't turn a successful
+            # import into a failed one.
+            result["sentiment_classification"] = await run_sentiment_classification(
+                client=sentiment_client
+            )
         return {"status": "completed", **result}
     except Exception as exc:
         await finalize_error_step(run_id=run_id, error_message=str(exc))
         return {"status": "error", "error_message": str(exc)}
 
 
-async def run_sentiment_classification() -> dict:
+async def run_sentiment_classification(*, client=None) -> dict:
     # Same plain-sequential rationale as run_import_pipeline: no durable
     # orchestration, resumable via the per-message sentiment_status column.
     conn = get_connection()
     try:
         run_id = create_sentiment_run(conn)
         try:
-            result = run_classification(conn)
+            result = run_classification(conn, client=client)
             finalize_sentiment_run(
                 conn,
                 run_id,

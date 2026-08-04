@@ -1,3 +1,5 @@
+import json
+
 from app.sentiment import classify_batch, fetch_pending_messages, write_batch_results
 
 
@@ -31,31 +33,24 @@ class FakeConnection:
         self.committed = True
 
 
-class FakeToolUseBlock:
-    type = "tool_use"
-
-    def __init__(self, input_data):
-        self.input = input_data
-
-
 class FakeResponse:
-    def __init__(self, content):
-        self.content = content
+    def __init__(self, payload):
+        self.text = json.dumps(payload)
 
 
-class FakeMessages:
+class FakeModels:
     def __init__(self, response):
         self._response = response
-        self.create_calls = []
+        self.generate_content_calls = []
 
-    def create(self, **kwargs):
-        self.create_calls.append(kwargs)
+    def generate_content(self, **kwargs):
+        self.generate_content_calls.append(kwargs)
         return self._response
 
 
 class FakeClient:
     def __init__(self, response):
-        self.messages = FakeMessages(response)
+        self.models = FakeModels(response)
 
 
 class TestFetchPendingMessages:
@@ -72,27 +67,21 @@ class TestFetchPendingMessages:
 
 class TestClassifyBatch:
     def test_returns_id_to_sentiment_mapping(self):
-        response = FakeResponse(
-            [FakeToolUseBlock({"results": [{"id": 1, "sentiment": "positif"}]})]
-        )
+        response = FakeResponse({"results": [{"id": 1, "sentiment": "positif"}]})
         client = FakeClient(response)
 
-        results = classify_batch(client, "claude-haiku-4-5", [{"id": 1, "text": "great day"}])
+        results = classify_batch(client, "gemini-2.5-flash-lite", [{"id": 1, "text": "great day"}])
 
         assert results == {1: "positif"}
 
     def test_ignores_entries_with_an_invalid_sentiment_value(self):
         response = FakeResponse(
-            [
-                FakeToolUseBlock(
-                    {"results": [{"id": 1, "sentiment": "positif"}, {"id": 2, "sentiment": "bof"}]}
-                )
-            ]
+            {"results": [{"id": 1, "sentiment": "positif"}, {"id": 2, "sentiment": "bof"}]}
         )
         client = FakeClient(response)
 
         results = classify_batch(
-            client, "claude-haiku-4-5", [{"id": 1, "text": "a"}, {"id": 2, "text": "b"}]
+            client, "gemini-2.5-flash-lite", [{"id": 1, "text": "a"}, {"id": 2, "text": "b"}]
         )
 
         assert results == {1: "positif"}

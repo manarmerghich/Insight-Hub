@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 
 import pytest
@@ -19,33 +20,26 @@ def _insert_message(conn, *, run_id: int, text: str) -> int:
     return message_id
 
 
-class FakeToolUseBlock:
-    type = "tool_use"
-
-    def __init__(self, input_data):
-        self.input = input_data
-
-
-class FakeMessages:
+class FakeModels:
     def __init__(self, sentiment_by_id):
         self._sentiment_by_id = sentiment_by_id
         self.call_count = 0
 
-    def create(self, **kwargs):
+    def generate_content(self, **kwargs):
         self.call_count += 1
-        prompt = kwargs["messages"][0]["content"]
+        prompt = kwargs["contents"]
         ids = [int(line.split("id ")[1].split(":")[0]) for line in prompt.splitlines() if "- id" in line]
         results = [{"id": i, "sentiment": self._sentiment_by_id[i]} for i in ids]
 
         class Response:
-            content = [FakeToolUseBlock({"results": results})]
+            text = json.dumps({"results": results})
 
         return Response()
 
 
 class FakeClient:
     def __init__(self, sentiment_by_id):
-        self.messages = FakeMessages(sentiment_by_id)
+        self.models = FakeModels(sentiment_by_id)
 
 
 @requires_docker
@@ -62,14 +56,14 @@ class TestSentimentClassificationIntegration:
         first_result = run_classification(db_conn, client=client)
 
         assert first_result == {"processed_count": 2, "error_count": 0}
-        assert client.messages.call_count == 1
+        assert client.models.call_count == 1
 
         second_result = run_classification(db_conn, client=client)
 
         # Both messages are already `completed` — the second invocation must not
         # resubmit them, so no additional API call and no further processed count.
         assert second_result == {"processed_count": 0, "error_count": 0}
-        assert client.messages.call_count == 1
+        assert client.models.call_count == 1
 
         with db_conn.cursor() as cur:
             cur.execute(
