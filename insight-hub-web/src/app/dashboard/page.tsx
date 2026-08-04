@@ -1,5 +1,6 @@
 import { getDashboardFilterOptions } from "@/db/dashboard-filter-options";
 import type { DashboardFilters } from "@/db/dashboard-filters";
+import { getEngagementRateBySentiment } from "@/db/engagement-rate";
 import { getLatestImportRun } from "@/db/latest-import-run";
 import { getCountryDistribution, getPlatformDistribution } from "@/db/message-distribution";
 import {
@@ -7,10 +8,13 @@ import {
   getNetSentimentScore,
   NET_SENTIMENT_SOURCE,
 } from "@/db/net-sentiment-score";
+import { getWeightedSentimentScore } from "@/db/weighted-sentiment-score";
 
 import { DistributionCard } from "./distribution-card";
+import { EngagementRateCard } from "./engagement-rate-card";
 import { FilterBar } from "./filter-bar";
 import { NetSentimentCard } from "./net-sentiment-card";
+import { WeightedSentimentCard } from "./weighted-sentiment-card";
 
 // Toujours lire les données à la demande : le sentiment se calcule
 // automatiquement en tâche de fond juste après l'import (voir
@@ -58,13 +62,16 @@ export default async function DashboardPage({
   const latestRun = await getLatestImportRun();
   const runId = latestRun?.id ?? null;
 
-  const [score, evolution, platforms, countries, filterOptions] = await Promise.all([
-    getNetSentimentScore(runId, filters),
-    getDailyNetSentimentEvolution(runId, filters),
-    getPlatformDistribution(runId, filters),
-    getCountryDistribution(runId, filters),
-    getDashboardFilterOptions(runId),
-  ]);
+  const [score, evolution, platforms, countries, filterOptions, engagementRates, weightedScore] =
+    await Promise.all([
+      getNetSentimentScore(runId, filters),
+      getDailyNetSentimentEvolution(runId, filters),
+      getPlatformDistribution(runId, filters),
+      getCountryDistribution(runId, filters),
+      getDashboardFilterOptions(runId),
+      getEngagementRateBySentiment(runId, filters),
+      getWeightedSentimentScore(runId, filters),
+    ]);
 
   return (
     <main className="dashboard-main">
@@ -93,6 +100,8 @@ export default async function DashboardPage({
             entries={countries}
           />
         </div>
+        <EngagementRateCard entries={engagementRates} />
+        <WeightedSentimentCard score={weightedScore} />
       </div>
     </main>
   );
