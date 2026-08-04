@@ -4,8 +4,13 @@ import json
 import pytest
 
 from app.db import create_import_run
+from app.themes import MIN_THEMES
 from app.workflows import run_import_pipeline
 from tests.conftest import requires_docker
+
+DISCOVERED_THEMES = [
+    {"label": f"Theme {i}", "description": f"Description {i}"} for i in range(MIN_THEMES)
+]
 
 
 class FakeModels:
@@ -27,6 +32,36 @@ class FakeModels:
 class FakeClient:
     def __init__(self):
         self.models = FakeModels()
+
+
+class FakeThemeModels:
+    def __init__(self):
+        self.call_count = 0
+        self.discovery_call_count = 0
+
+    def generate_content(self, **kwargs):
+        self.call_count += 1
+        contents = kwargs["contents"]
+
+        class Response:
+            text = None
+
+        if "- id " not in contents:
+            self.discovery_call_count += 1
+            Response.text = json.dumps({"themes": DISCOVERED_THEMES})
+            return Response()
+
+        ids = [
+            int(line.split("id ")[1].split(":")[0]) for line in contents.splitlines() if "- id" in line
+        ]
+        results = [{"id": i, "theme": "Theme 0"} for i in ids]
+        Response.text = json.dumps({"results": results})
+        return Response()
+
+
+class FakeThemeClient:
+    def __init__(self):
+        self.models = FakeThemeModels()
 
 
 def _raw_row(text: str) -> dict:
@@ -53,6 +88,7 @@ class TestImportPipelineAutoTriggersSentimentClassification:
         run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
 
         client = FakeClient()
+        theme_client = FakeThemeClient()
         result = asyncio.run(
             run_import_pipeline(
                 run_id=run_id,
@@ -60,6 +96,7 @@ class TestImportPipelineAutoTriggersSentimentClassification:
                 source_filename="test.csv",
                 rows=[_raw_row("What a beautiful day")],
                 sentiment_client=client,
+                theme_client=theme_client,
             )
         )
 
@@ -68,6 +105,8 @@ class TestImportPipelineAutoTriggersSentimentClassification:
         assert client.models.call_count == 1
         assert result["sentiment_classification"]["status"] == "completed"
         assert result["sentiment_classification"]["processed_count"] == 1
+        assert result["theme_classification"]["status"] == "completed"
+        assert result["theme_classification"]["processed_count"] == 1
 
         with db_conn.cursor() as cur:
             cur.execute(
@@ -95,6 +134,7 @@ class TestImportPipelineAutoTriggersSentimentClassification:
 
         second_run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
         client = FakeClient()
+        theme_client = FakeThemeClient()
         result = asyncio.run(
             run_import_pipeline(
                 run_id=second_run_id,
@@ -102,10 +142,13 @@ class TestImportPipelineAutoTriggersSentimentClassification:
                 source_filename="test.csv",
                 rows=[raw_row],
                 sentiment_client=client,
+                theme_client=theme_client,
             )
         )
 
         assert result["status"] == "completed"
         assert result["inserted_count"] == 0
         assert "sentiment_classification" not in result
+        assert "theme_classification" not in result
         assert client.models.call_count == 0
+        assert theme_client.models.call_count == 0

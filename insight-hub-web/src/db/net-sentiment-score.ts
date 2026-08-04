@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { messages } from "@/db/schema";
+import { dashboardFilterConditions, type DashboardFilters } from "@/db/dashboard-filters";
 import { mapOriginalSentimentToCategory } from "@/db/original-sentiment-mapping";
 
 // La classification IA (Gemini, voir ai-sentiment-analysis) est active :
@@ -23,14 +24,19 @@ function computeNetScore(positive: number, negative: number, total: number): num
   return Math.round(((positive - negative) / total) * 100);
 }
 
-export async function getNetSentimentScore(runId: number | null): Promise<number | null> {
+export async function getNetSentimentScore(
+  runId: number | null,
+  filters: DashboardFilters,
+): Promise<number | null> {
   if (runId === null) return null;
 
   if (NET_SENTIMENT_SOURCE === "csv_original") {
     const rows = await db
       .select({ sentimentOriginal: messages.sentimentOriginal })
       .from(messages)
-      .where(eq(messages.runId, runId));
+      .where(
+        and(eq(messages.runId, runId), ...dashboardFilterConditions(filters, "csv_original")),
+      );
 
     let positive = 0;
     let negative = 0;
@@ -60,7 +66,7 @@ export async function getNetSentimentScore(runId: number | null): Promise<number
       ),
     })
     .from(messages)
-    .where(eq(messages.runId, runId));
+    .where(and(eq(messages.runId, runId), ...dashboardFilterConditions(filters, "ai")));
 
   if (!row || row.total === 0) return null;
   return computeNetScore(row.positive, row.negative, row.total);
@@ -68,6 +74,7 @@ export async function getNetSentimentScore(runId: number | null): Promise<number
 
 export async function getDailyNetSentimentEvolution(
   runId: number | null,
+  filters: DashboardFilters,
 ): Promise<DailyNetSentiment[]> {
   if (runId === null) return [];
 
@@ -75,7 +82,9 @@ export async function getDailyNetSentimentEvolution(
     const rows = await db
       .select({ timestamp: messages.timestamp, sentimentOriginal: messages.sentimentOriginal })
       .from(messages)
-      .where(eq(messages.runId, runId));
+      .where(
+        and(eq(messages.runId, runId), ...dashboardFilterConditions(filters, "csv_original")),
+      );
 
     const byDay = new Map<
       string,
@@ -116,7 +125,13 @@ export async function getDailyNetSentimentEvolution(
       total: sql<number>`count(*)`.mapWith(Number),
     })
     .from(messages)
-    .where(and(eq(messages.sentimentStatus, "completed"), eq(messages.runId, runId)))
+    .where(
+      and(
+        eq(messages.sentimentStatus, "completed"),
+        eq(messages.runId, runId),
+        ...dashboardFilterConditions(filters, "ai"),
+      ),
+    )
     .groupBy(day)
     .orderBy(day);
 

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 
 import pytest
@@ -23,42 +24,35 @@ def _insert_message(conn, *, run_id: int, text: str) -> int:
     return message_id
 
 
-class FakeToolUseBlock:
-    type = "tool_use"
-
-    def __init__(self, input_data):
-        self.input = input_data
-
-
-class FakeMessages:
+class FakeModels:
     def __init__(self, theme_by_id):
         self._theme_by_id = theme_by_id
         self.call_count = 0
         self.discovery_call_count = 0
 
-    def create(self, **kwargs):
+    def generate_content(self, **kwargs):
         self.call_count += 1
+        contents = kwargs["contents"]
 
         class Response:
-            content = None
+            text = None
 
-        if kwargs["tool_choice"]["name"] == "discover_themes":
+        if "- id " not in contents:
             self.discovery_call_count += 1
-            Response.content = [FakeToolUseBlock({"themes": DISCOVERED_THEMES})]
+            Response.text = json.dumps({"themes": DISCOVERED_THEMES})
             return Response()
 
-        prompt = kwargs["messages"][0]["content"]
         ids = [
-            int(line.split("id ")[1].split(":")[0]) for line in prompt.splitlines() if "- id" in line
+            int(line.split("id ")[1].split(":")[0]) for line in contents.splitlines() if "- id" in line
         ]
         results = [{"id": i, "theme": self._theme_by_id[i]} for i in ids]
-        Response.content = [FakeToolUseBlock({"results": results})]
+        Response.text = json.dumps({"results": results})
         return Response()
 
 
 class FakeClient:
     def __init__(self, theme_by_id):
-        self.messages = FakeMessages(theme_by_id)
+        self.models = FakeModels(theme_by_id)
 
 
 @requires_docker
@@ -75,7 +69,7 @@ class TestThemeClassificationIntegration:
         result = run_theme_classification(db_conn, client=client)
 
         assert result == {"processed_count": 2, "error_count": 0}
-        assert client.messages.discovery_call_count == 1
+        assert client.models.discovery_call_count == 1
 
         with db_conn.cursor() as cur:
             cur.execute("SELECT label FROM themes ORDER BY id")
@@ -101,7 +95,7 @@ class TestThemeClassificationIntegration:
         first_result = run_theme_classification(db_conn, client=client)
 
         assert first_result == {"processed_count": 2, "error_count": 0}
-        assert client.messages.call_count == 2  # discovery + one classification batch
+        assert client.models.call_count == 2  # discovery + one classification batch
 
         second_result = run_theme_classification(db_conn, client=client)
 
@@ -109,19 +103,19 @@ class TestThemeClassificationIntegration:
         # already exists — the second invocation must not resubmit messages
         # or re-run discovery.
         assert second_result == {"processed_count": 0, "error_count": 0}
-        assert client.messages.discovery_call_count == 1
-        assert client.messages.call_count == 2
+        assert client.models.discovery_call_count == 1
+        assert client.models.call_count == 2
 
     def test_discovery_failure_leaves_messages_pending_for_a_later_invocation(self, db_conn):
         run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
         message_id = _insert_message(db_conn, run_id=run_id, text="What a beautiful day")
 
-        class FailingMessages:
-            def create(self, **kwargs):
+        class FailingModels:
+            def generate_content(self, **kwargs):
                 raise RuntimeError("discovery failed")
 
         class FailingClient:
-            messages = FailingMessages()
+            models = FailingModels()
 
         result = run_theme_classification(db_conn, client=FailingClient())
 

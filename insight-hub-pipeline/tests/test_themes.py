@@ -1,3 +1,5 @@
+import json
+
 from app.themes import (
     classify_theme_batch,
     discover_themes,
@@ -43,31 +45,24 @@ class FakeConnection:
         self.committed = True
 
 
-class FakeToolUseBlock:
-    type = "tool_use"
-
-    def __init__(self, input_data):
-        self.input = input_data
-
-
 class FakeResponse:
-    def __init__(self, content):
-        self.content = content
+    def __init__(self, payload):
+        self.text = json.dumps(payload)
 
 
-class FakeMessages:
+class FakeModels:
     def __init__(self, response):
         self._response = response
-        self.create_calls = []
+        self.generate_content_calls = []
 
-    def create(self, **kwargs):
-        self.create_calls.append(kwargs)
+    def generate_content(self, **kwargs):
+        self.generate_content_calls.append(kwargs)
         return self._response
 
 
 class FakeClient:
     def __init__(self, response):
-        self.messages = FakeMessages(response)
+        self.models = FakeModels(response)
 
 
 class TestFetchDiscoverySample:
@@ -85,31 +80,31 @@ class TestFetchDiscoverySample:
 class TestDiscoverThemes:
     def test_returns_exploitable_themes_within_bounds(self):
         themes = [{"label": f"Theme {i}", "description": f"Description {i}"} for i in range(5)]
-        response = FakeResponse([FakeToolUseBlock({"themes": themes})])
+        response = FakeResponse({"themes": themes})
         client = FakeClient(response)
 
-        result = discover_themes(client, "claude-haiku-4-5", [{"id": 1, "text": "a"}])
+        result = discover_themes(client, "gemini-flash-lite-latest", [{"id": 1, "text": "a"}])
 
         assert result == themes
 
     def test_raises_when_fewer_than_five_themes_are_exploitable(self):
         themes = [{"label": "Theme 1", "description": "Description 1"}]
-        response = FakeResponse([FakeToolUseBlock({"themes": themes})])
+        response = FakeResponse({"themes": themes})
         client = FakeClient(response)
 
         try:
-            discover_themes(client, "claude-haiku-4-5", [{"id": 1, "text": "a"}])
+            discover_themes(client, "gemini-flash-lite-latest", [{"id": 1, "text": "a"}])
             assert False, "expected ValueError"
         except ValueError:
             pass
 
     def test_raises_when_more_than_eight_themes_are_returned(self):
         themes = [{"label": f"Theme {i}", "description": f"Description {i}"} for i in range(9)]
-        response = FakeResponse([FakeToolUseBlock({"themes": themes})])
+        response = FakeResponse({"themes": themes})
         client = FakeClient(response)
 
         try:
-            discover_themes(client, "claude-haiku-4-5", [{"id": 1, "text": "a"}])
+            discover_themes(client, "gemini-flash-lite-latest", [{"id": 1, "text": "a"}])
             assert False, "expected ValueError"
         except ValueError:
             pass
@@ -117,10 +112,10 @@ class TestDiscoverThemes:
     def test_discards_entries_with_a_blank_label_or_description(self):
         themes = [{"label": f"Theme {i}", "description": f"Description {i}"} for i in range(5)]
         themes.append({"label": "", "description": "orphan"})
-        response = FakeResponse([FakeToolUseBlock({"themes": themes})])
+        response = FakeResponse({"themes": themes})
         client = FakeClient(response)
 
-        result = discover_themes(client, "claude-haiku-4-5", [{"id": 1, "text": "a"}])
+        result = discover_themes(client, "gemini-flash-lite-latest", [{"id": 1, "text": "a"}])
 
         assert result == themes[:5]
 
@@ -162,24 +157,27 @@ class TestLoadThemeLabels:
 
 class TestClassifyThemeBatch:
     def test_returns_id_to_theme_id_mapping(self):
-        response = FakeResponse([FakeToolUseBlock({"results": [{"id": 1, "theme": "Support"}]})])
+        response = FakeResponse({"results": [{"id": 1, "theme": "Support"}]})
         client = FakeClient(response)
 
         results = classify_theme_batch(
-            client, "claude-haiku-4-5", [{"id": 1, "text": "j'ai un souci"}], {"Support": 1, "Prix": 2}
+            client,
+            "gemini-flash-lite-latest",
+            [{"id": 1, "text": "j'ai un souci"}],
+            {"Support": 1, "Prix": 2},
         )
 
         assert results == {1: 1}
 
     def test_rejects_a_theme_label_outside_the_reference_set(self):
         response = FakeResponse(
-            [FakeToolUseBlock({"results": [{"id": 1, "theme": "Support"}, {"id": 2, "theme": "Inconnu"}]})]
+            {"results": [{"id": 1, "theme": "Support"}, {"id": 2, "theme": "Inconnu"}]}
         )
         client = FakeClient(response)
 
         results = classify_theme_batch(
             client,
-            "claude-haiku-4-5",
+            "gemini-flash-lite-latest",
             [{"id": 1, "text": "a"}, {"id": 2, "text": "b"}],
             {"Support": 1, "Prix": 2},
         )

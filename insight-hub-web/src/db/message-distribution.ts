@@ -1,9 +1,15 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { messages } from "@/db/schema";
+import {
+  dashboardFilterConditions,
+  UNKNOWN_COUNTRY_LABEL,
+  type DashboardFilters,
+} from "@/db/dashboard-filters";
+import { NET_SENTIMENT_SOURCE } from "@/db/net-sentiment-score";
 
-export const UNKNOWN_COUNTRY_LABEL = "Non renseigné";
+export { UNKNOWN_COUNTRY_LABEL } from "@/db/dashboard-filters";
 
 export type DistributionEntry = {
   label: string;
@@ -19,7 +25,10 @@ function withShares(rows: { label: string; messageCount: number }[]): Distributi
   }));
 }
 
-export async function getPlatformDistribution(runId: number | null): Promise<DistributionEntry[]> {
+export async function getPlatformDistribution(
+  runId: number | null,
+  filters: DashboardFilters,
+): Promise<DistributionEntry[]> {
   if (runId === null) return [];
 
   const rows = await db
@@ -28,14 +37,19 @@ export async function getPlatformDistribution(runId: number | null): Promise<Dis
       messageCount: sql<number>`count(*)`.mapWith(Number),
     })
     .from(messages)
-    .where(eq(messages.runId, runId))
+    .where(
+      and(eq(messages.runId, runId), ...dashboardFilterConditions(filters, NET_SENTIMENT_SOURCE)),
+    )
     .groupBy(messages.platform)
     .orderBy(desc(sql`count(*)`));
 
   return withShares(rows);
 }
 
-export async function getCountryDistribution(runId: number | null): Promise<DistributionEntry[]> {
+export async function getCountryDistribution(
+  runId: number | null,
+  filters: DashboardFilters,
+): Promise<DistributionEntry[]> {
   if (runId === null) return [];
 
   const rows = await db
@@ -44,7 +58,9 @@ export async function getCountryDistribution(runId: number | null): Promise<Dist
       messageCount: sql<number>`count(*)`.mapWith(Number),
     })
     .from(messages)
-    .where(eq(messages.runId, runId))
+    .where(
+      and(eq(messages.runId, runId), ...dashboardFilterConditions(filters, NET_SENTIMENT_SOURCE)),
+    )
     .groupBy(messages.country);
 
   const byLabel = new Map<string, number>();

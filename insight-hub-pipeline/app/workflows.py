@@ -53,7 +53,13 @@ async def finalize_error_step(*, run_id: int, error_message: str) -> None:
 
 
 async def run_import_pipeline(
-    *, run_id: int, keyword: str, source_filename: str, rows: list[dict], sentiment_client=None
+    *,
+    run_id: int,
+    keyword: str,
+    source_filename: str,
+    rows: list[dict],
+    sentiment_client=None,
+    theme_client=None,
 ) -> dict:
     # Plain sequential pipeline: no durable orchestration (Vercel Workflows'
     # Python SDK is beta and its dispatch can't be exercised locally/CI —
@@ -75,14 +81,17 @@ async def run_import_pipeline(
             retained_count=result["inserted_count"],
         )
         if result["inserted_count"] > 0:
-            # Auto-trigger sentiment classification right after a successful
-            # import that actually added messages, so the dashboard's net
-            # sentiment KPI is populated without a separate manual call.
-            # run_sentiment_classification() never raises (it records its own
-            # failures on the sentiment run), so it can't turn a successful
+            # Auto-trigger sentiment and theme classification right after a
+            # successful import that actually added messages, so the
+            # dashboard's KPIs are populated without a separate manual call.
+            # Neither classification step ever raises (each records its own
+            # failures on its own run), so neither can turn a successful
             # import into a failed one.
             result["sentiment_classification"] = await run_sentiment_classification(
                 client=sentiment_client
+            )
+            result["theme_classification"] = await run_theme_classification_step(
+                client=theme_client
             )
         return {"status": "completed", **result}
     except Exception as exc:
@@ -113,14 +122,14 @@ async def run_sentiment_classification(*, client=None) -> dict:
         conn.close()
 
 
-async def run_theme_classification_step() -> dict:
+async def run_theme_classification_step(*, client=None) -> dict:
     # Same plain-sequential rationale as run_sentiment_classification: no
     # durable orchestration, resumable via the per-message theme_status column.
     conn = get_connection()
     try:
         run_id = create_theme_run(conn)
         try:
-            result = run_theme_classification(conn)
+            result = run_theme_classification(conn, client=client)
             finalize_theme_run(
                 conn,
                 run_id,

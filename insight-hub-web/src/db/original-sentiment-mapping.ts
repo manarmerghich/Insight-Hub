@@ -6,7 +6,7 @@ export type SentimentCategory = "positive" | "negative" | "neutral";
 // source porte ~190 émotions fines, beaucoup ambiguës ou thématiques
 // (ex. "Ambivalence", "Ocean's Freedom") — celles-ci retombent sur
 // "neutral" par défaut plutôt que d'être devinées au hasard.
-const POSITIVE_LABELS = new Set([
+export const POSITIVE_LABELS = new Set([
   "acceptance",
   "accomplishment",
   "admiration",
@@ -101,7 +101,7 @@ const POSITIVE_LABELS = new Set([
   "zest",
 ]);
 
-const NEGATIVE_LABELS = new Set([
+export const NEGATIVE_LABELS = new Set([
   "anger",
   "anxiety",
   "apprehensive",

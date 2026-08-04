@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Découvrir, une seule fois, un référentiel global de 5 à 8 thèmes (libellé + courte description) à partir d'un échantillon représentatif des messages déjà importés, via le SDK Anthropic, puis classer chaque message dans l'un de ces thèmes, avec suivi de run resumable — miroir de `ai-sentiment-analysis` pour les thèmes. Cette capacité est un socle pour les KPIs de thème prévus au PRD (top thèmes/mots-clés, score de risque par thème, tendance par thème, filtres croisés par thème).
+Découvrir, une seule fois, un référentiel global de 5 à 8 thèmes (libellé + courte description) à partir d'un échantillon représentatif des messages déjà importés, via un SDK IA avec sortie structurée (actuellement : SDK Gemini, `google-genai`), puis classer chaque message dans l'un de ces thèmes, avec suivi de run resumable — miroir de `ai-sentiment-analysis` pour les thèmes. Cette capacité est un socle pour les KPIs de thème prévus au PRD (top thèmes/mots-clés, score de risque par thème, tendance par thème, filtres croisés par thème).
 
 ## Requirements
 
 ### Requirement: Theme Taxonomy Discovery
-Le système SHALL découvrir, une seule fois, un référentiel global de 5 à 8 thèmes (libellé + courte description) à partir d'un échantillon représentatif des messages déjà importés, via un appel au SDK Anthropic, lorsqu'aucun référentiel de thèmes n'existe encore en base.
+Le système SHALL découvrir, une seule fois, un référentiel global de 5 à 8 thèmes (libellé + courte description) à partir d'un échantillon représentatif des messages déjà importés, via un appel à un SDK IA avec sortie structurée (actuellement : SDK Gemini, `google-genai`), lorsqu'aucun référentiel de thèmes n'existe encore en base.
 
 #### Scenario: Aucun référentiel de thèmes n'existe encore
 - **WHEN** l'étape de classification de thème est déclenchée et qu'aucune ligne n'existe dans la table des thèmes
@@ -22,7 +22,7 @@ Le système SHALL découvrir, une seule fois, un référentiel global de 5 à 8 
 - **THEN** aucun thème n'est enregistré en base, aucun message n'est classé lors de cette invocation, et la découverte est retentée lors d'une invocation ultérieure
 
 ### Requirement: Message Theme Classification
-Le système SHALL classer chaque message n'ayant pas encore de thème calculé (`theme_status = 'pending'` ou `'error'`) dans l'un des thèmes du référentiel existant, via un appel au SDK Anthropic.
+Le système SHALL classer chaque message n'ayant pas encore de thème calculé (`theme_status = 'pending'` ou `'error'`) dans l'un des thèmes du référentiel existant, via un appel à un SDK IA avec sortie structurée (actuellement : SDK Gemini, `google-genai`).
 
 #### Scenario: Message en attente de classification de thème
 - **WHEN** un message a `theme_status = 'pending'` et qu'un référentiel de thèmes existe
@@ -49,3 +49,18 @@ Le système SHALL enregistrer chaque invocation de l'étape de classification de
 #### Scenario: Run terminé
 - **WHEN** une invocation de l'étape de classification de thème se termine, qu'elle ait traité tout ou partie des messages en attente
 - **THEN** un enregistrement de run est consultable en base avec le nombre de messages traités avec succès et le nombre de messages en erreur pour cette invocation
+
+### Requirement: Automatic Trigger After Import
+Le système SHALL déclencher automatiquement l'étape de classification de thème juste après qu'un run d'import ait inséré au moins un nouveau message, sans action manuelle de l'utilisateur.
+
+#### Scenario: Import réussi avec au moins un nouveau message
+- **WHEN** un run d'import se termine avec succès et a inséré au moins un nouveau message
+- **THEN** le système déclenche immédiatement l'étape de classification de thème, dans la foulée du run d'import (après la classification de sentiment)
+
+#### Scenario: Import sans nouveau message
+- **WHEN** un run d'import se termine avec succès mais n'a inséré aucun nouveau message (doublons, aucune correspondance de mot-clé)
+- **THEN** le système ne déclenche pas de nouvelle classification de thème
+
+#### Scenario: Échec de la classification déclenchée automatiquement
+- **WHEN** la classification de thème déclenchée automatiquement échoue
+- **THEN** le statut du run d'import reste inchangé (`completed`) — l'échec de la classification n'est jamais reporté sur le statut de l'import

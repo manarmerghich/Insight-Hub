@@ -1,3 +1,5 @@
+import { getDashboardFilterOptions } from "@/db/dashboard-filter-options";
+import type { DashboardFilters } from "@/db/dashboard-filters";
 import { getLatestImportRun } from "@/db/latest-import-run";
 import { getCountryDistribution, getPlatformDistribution } from "@/db/message-distribution";
 import {
@@ -7,6 +9,7 @@ import {
 } from "@/db/net-sentiment-score";
 
 import { DistributionCard } from "./distribution-card";
+import { FilterBar } from "./filter-bar";
 import { NetSentimentCard } from "./net-sentiment-card";
 
 // Toujours lire les données à la demande : le sentiment se calcule
@@ -15,15 +18,52 @@ import { NetSentimentCard } from "./net-sentiment-card";
 // cache qui daterait d'avant cette classification.
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const SENTIMENT_VALUES = new Set(["positif", "négatif", "neutre"]);
+
+type SearchParams = Record<string, string | string[] | undefined>;
+
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function parseDate(value: string | undefined): string | undefined {
+  if (!value || !DATE_PATTERN.test(value)) return undefined;
+  return Number.isNaN(new Date(value).getTime()) ? undefined : value;
+}
+
+function parseDashboardFilters(searchParams: SearchParams): DashboardFilters {
+  const sentiment = first(searchParams.sentiment);
+  const themeId = first(searchParams.themeId);
+  const parsedThemeId = themeId !== undefined ? Number.parseInt(themeId, 10) : NaN;
+
+  return {
+    dateFrom: parseDate(first(searchParams.dateFrom)),
+    dateTo: parseDate(first(searchParams.dateTo)),
+    platform: first(searchParams.platform) || undefined,
+    country: first(searchParams.country) || undefined,
+    sentiment: sentiment && SENTIMENT_VALUES.has(sentiment)
+      ? (sentiment as DashboardFilters["sentiment"])
+      : undefined,
+    themeId: Number.isInteger(parsedThemeId) ? parsedThemeId : undefined,
+  };
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const filters = parseDashboardFilters(await searchParams);
   const latestRun = await getLatestImportRun();
   const runId = latestRun?.id ?? null;
 
-  const [score, evolution, platforms, countries] = await Promise.all([
-    getNetSentimentScore(runId),
-    getDailyNetSentimentEvolution(runId),
-    getPlatformDistribution(runId),
-    getCountryDistribution(runId),
+  const [score, evolution, platforms, countries, filterOptions] = await Promise.all([
+    getNetSentimentScore(runId, filters),
+    getDailyNetSentimentEvolution(runId, filters),
+    getPlatformDistribution(runId, filters),
+    getCountryDistribution(runId, filters),
+    getDashboardFilterOptions(runId),
   ]);
 
   return (
@@ -37,6 +77,7 @@ export default async function DashboardPage() {
         ) : (
           <p className="empty-state">Aucun import réalisé pour l&apos;instant.</p>
         )}
+        <FilterBar options={filterOptions} />
         <NetSentimentCard score={score} evolution={evolution} source={NET_SENTIMENT_SOURCE} />
         <div className="dashboard-grid dashboard-grid--split">
           <DistributionCard
