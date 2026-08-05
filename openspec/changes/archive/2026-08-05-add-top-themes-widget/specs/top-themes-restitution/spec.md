@@ -1,10 +1,4 @@
-# top-themes-restitution
-
-## Purpose
-
-Restituer, sur le dashboard, le classement des thèmes déjà calculés par volume de messages (le libellé de thème tient lieu de mot-clé), scopé au dernier run d'import et aux filtres croisés actifs, sans déclencher de nouveau calcul IA.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Theme Ranking By Volume
 Le système SHALL restituer, sur le dashboard, le classement des thèmes du référentiel existant triés par nombre décroissant de messages classés dans chacun, scopé au dernier run d'import et restreint par les filtres croisés période, plateforme, pays et sentiment actifs sur le dashboard, sans déclencher de nouveau calcul IA.

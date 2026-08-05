@@ -8,12 +8,14 @@ import {
   getNetSentimentScore,
   NET_SENTIMENT_SOURCE,
 } from "@/db/net-sentiment-score";
+import { getThemeRanking } from "@/db/theme-ranking";
 import { getWeightedSentimentScore } from "@/db/weighted-sentiment-score";
 
 import { DistributionCard } from "./distribution-card";
 import { EngagementRateCard } from "./engagement-rate-card";
 import { FilterBar } from "./filter-bar";
 import { NetSentimentCard } from "./net-sentiment-card";
+import { TopThemesCard } from "./top-themes-card";
 import { WeightedSentimentCard } from "./weighted-sentiment-card";
 
 // Toujours lire les données à la demande : le sentiment se calcule
@@ -62,16 +64,25 @@ export default async function DashboardPage({
   const latestRun = await getLatestImportRun();
   const runId = latestRun?.id ?? null;
 
-  const [score, evolution, platforms, countries, filterOptions, engagementRates, weightedScore] =
-    await Promise.all([
-      getNetSentimentScore(runId, filters),
-      getDailyNetSentimentEvolution(runId, filters),
-      getPlatformDistribution(runId, filters),
-      getCountryDistribution(runId, filters),
-      getDashboardFilterOptions(runId),
-      getEngagementRateBySentiment(runId, filters),
-      getWeightedSentimentScore(runId, filters),
-    ]);
+  const [
+    score,
+    evolution,
+    platforms,
+    countries,
+    filterOptions,
+    engagementRates,
+    weightedScore,
+    themeRanking,
+  ] = await Promise.all([
+    getNetSentimentScore(runId, filters),
+    getDailyNetSentimentEvolution(runId, filters),
+    getPlatformDistribution(runId, filters),
+    getCountryDistribution(runId, filters),
+    getDashboardFilterOptions(runId),
+    getEngagementRateBySentiment(runId, filters),
+    getWeightedSentimentScore(runId, filters),
+    getThemeRanking(runId, filters),
+  ]);
 
   return (
     <main className="dashboard-main">
@@ -102,6 +113,7 @@ export default async function DashboardPage({
         </div>
         <EngagementRateCard entries={engagementRates} />
         <WeightedSentimentCard score={weightedScore} />
+        <TopThemesCard entries={themeRanking} />
       </div>
     </main>
   );

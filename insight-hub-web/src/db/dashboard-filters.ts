@@ -74,12 +74,15 @@ export function sentimentCondition(
 export function dashboardFilterConditions(
   filters: DashboardFilters,
   sentimentSource: "ai" | "csv_original",
+  options?: { includeTheme?: boolean },
 ): SQL[] {
+  const includeTheme = options?.includeTheme ?? true;
+
   return [
     dateRangeCondition(filters),
     platformCondition(filters),
     countryCondition(filters),
-    themeCondition(filters),
+    includeTheme ? themeCondition(filters) : undefined,
     sentimentCondition(filters, sentimentSource),
   ].filter((condition): condition is SQL => condition !== undefined);
 }
