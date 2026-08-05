@@ -435,15 +435,86 @@ select:focus-visible {
   text-align: center;
 }
 
+.evolution-chart-wrap {
+  position: relative;
+  margin-top: 1.5rem;
+}
+
 .evolution-chart {
   width: 100%;
   height: auto;
-  margin-top: 1.5rem;
+  display: block;
 }
 
 .evolution-chart text {
   font-size: 0.625rem;
   fill: var(--color-text-muted);
+}
+
+.evolution-chart__peak {
+  cursor: pointer;
+}
+
+.evolution-chart__peak:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.evolution-chart__tooltip {
+  position: absolute;
+  z-index: 10;
+  width: 15rem;
+  max-width: calc(100% - 1rem);
+  transform: translate(-50%, -100%) translateY(-0.75rem);
+  padding: 0.75rem 0.875rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  pointer-events: none;
+}
+
+.evolution-chart__tooltip--below {
+  transform: translate(-50%, 0) translateY(0.75rem);
+}
+
+@media (max-width: 640px) {
+  /* Sur mobile, le conteneur est trop étroit pour garder la tooltip alignée
+     sur le marqueur sans déborder du `.card` (overflow: hidden) : on la
+     recentre horizontalement, sa position verticale reste liée au marqueur. */
+  .evolution-chart__tooltip {
+    left: 50% !important;
+  }
+}
+
+.evolution-chart__tooltip-title {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.evolution-chart__tooltip--positive .evolution-chart__tooltip-title {
+  color: var(--color-success-text);
+}
+
+.evolution-chart__tooltip--negative .evolution-chart__tooltip-title {
+  color: var(--color-error-text);
+}
+
+.evolution-chart__tooltip-score {
+  font-weight: 600;
+  margin-bottom: 0.375rem;
+}
+
+.evolution-chart__tooltip-score span {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.evolution-chart__tooltip-message {
+  color: var(--color-text-muted);
+  line-height: 1.4;
 }
 
 .bar-list {
