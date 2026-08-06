@@ -15,6 +15,7 @@ import { getNetSentimentPeaksWithMessages } from "@/db/sentiment-timeline-peaks"
 import { getThemeRanking } from "@/db/theme-ranking";
 import { getWeightedSentimentScore } from "@/db/weighted-sentiment-score";
 
+import { CountryMapCard } from "./country-map-card";
 import { DistributionCard } from "./distribution-card";
 import { EngagementRateCard } from "./engagement-rate-card";
 import { FilterBar } from "./filter-bar";
@@ -136,12 +137,7 @@ export default async function DashboardPage({
             emptyMessage="Aucun message importé pour l'instant."
             entries={platforms}
           />
-          <DistributionCard
-            kicker="Répartition"
-            title="Messages par pays"
-            emptyMessage="Aucun message importé pour l'instant."
-            entries={countries}
-          />
+          <CountryMapCard entries={countries} />
         </div>
         <EngagementRateCard entries={engagementRates} />
         <WeightedSentimentCard score={weightedScore} />

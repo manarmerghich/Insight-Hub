@@ -1,44 +1,4 @@
-# platform-country-distribution Specification
-
-## Purpose
-TBD - created by archiving change sentiment-and-distribution-dashboard. Update Purpose after archive.
-## Requirements
-### Requirement: Default Scope To Latest Import Run
-Le système SHALL restreindre, par défaut, les données utilisées par ces répartitions aux messages du dernier run d'import ayant effectivement des messages associés (et non à l'ensemble des messages accumulés toutes sessions d'import confondues). Un run n'ayant retenu aucun message (doublons, aucune correspondance) est ignoré au profit du run précédent ayant des messages.
-
-#### Scenario: Plusieurs runs d'import existent
-- **WHEN** une répartition (plateforme ou pays) est demandée et que plusieurs runs d'import ont eu lieu
-- **THEN** seuls les messages du run ayant l'identifiant le plus élevé parmi ceux possédant au moins un message sont pris en compte
-
-#### Scenario: Aucun run d'import n'a encore de message
-- **WHEN** une répartition est demandée mais qu'aucun run d'import n'a de message associé
-- **THEN** le système retourne une répartition vide, comme si aucun message n'était importé
-
-### Requirement: Message Distribution By Platform
-Le système SHALL restituer, pour chaque plateforme présente dans les messages du dernier run d'import (voir Requirement: Default Scope To Latest Import Run), le nombre de messages et la part qu'il représente parmi ces messages, indépendamment du statut de sentiment ou de thème, en tenant compte en plus des filtres croisés actifs (période, plateforme, pays, sentiment, thème — voir `dashboard-cross-filters`) le cas échéant.
-
-#### Scenario: Répartition par plateforme demandée
-- **WHEN** la répartition par plateforme est demandée
-- **THEN** le système retourne, pour chaque plateforme distincte présente dans les messages du dernier run d'import, le nombre de messages et sa part du total de ce run, triés du plus grand nombre au plus petit
-
-#### Scenario: Répartition par plateforme demandée avec des filtres croisés actifs
-- **WHEN** la répartition par plateforme est demandée alors qu'un ou plusieurs filtres croisés sont actifs (autres que le filtre plateforme lui-même)
-- **THEN** le système ne compte que les messages du dernier run d'import satisfaisant l'ensemble de ces filtres, avant de les répartir par plateforme
-
-### Requirement: Message Distribution By Country
-Le système SHALL restituer, pour chaque pays présent dans les messages du dernier run d'import, le nombre de messages et la part qu'il représente parmi ces messages, en regroupant sous une catégorie "Non renseigné" les messages sans pays connu, en tenant compte en plus des filtres croisés actifs (période, plateforme, pays, sentiment, thème — voir `dashboard-cross-filters`) le cas échéant.
-
-#### Scenario: Répartition par pays demandée
-- **WHEN** la répartition par pays est demandée
-- **THEN** le système retourne, pour chaque pays distinct renseigné parmi les messages du dernier run d'import, le nombre de messages et sa part du total de ce run, triés du plus grand nombre au plus petit
-
-#### Scenario: Message sans pays renseigné
-- **WHEN** un message du dernier run d'import a un champ pays vide ou absent
-- **THEN** ce message est compté dans une catégorie "Non renseigné" plutôt que d'être omis de la répartition
-
-#### Scenario: Répartition par pays demandée avec des filtres croisés actifs
-- **WHEN** la répartition par pays est demandée alors qu'un ou plusieurs filtres croisés sont actifs (autres que le filtre pays lui-même)
-- **THEN** le système ne compte que les messages du dernier run d'import satisfaisant l'ensemble de ces filtres, avant de les répartir par pays
+## MODIFIED Requirements
 
 ### Requirement: Dashboard Distribution Visualization
 Le système SHALL afficher, sur la page dashboard, la répartition des messages par plateforme sous forme d'une liste triée par volume décroissant, et la répartition par pays sous forme d'une carte du monde interactive accompagnée d'un classement compact trié par volume décroissant.
@@ -50,6 +10,8 @@ Le système SHALL afficher, sur la page dashboard, la répartition des messages 
 #### Scenario: Dashboard sans message importé
 - **WHEN** l'utilisateur consulte la page dashboard et qu'aucun message n'est encore importé
 - **THEN** la page affiche un état vide explicite pour la répartition par plateforme et pour la répartition par pays (carte et classement), sans erreur
+
+## ADDED Requirements
 
 ### Requirement: Country Net Sentiment Score
 Le système SHALL calculer, pour chaque pays présent dans les messages du dernier run d'import (voir Requirement: Default Scope To Latest Import Run), un score de sentiment net ((messages positifs − messages négatifs) / messages classés de ce pays), en tenant compte des filtres croisés actifs, avec la même source de sentiment que le score de sentiment net global (voir `net-sentiment-score`). Un pays sans message classé par le sentiment n'a pas de score (valeur indéfinie plutôt qu'un score à zéro).
@@ -83,4 +45,3 @@ Le système SHALL faire correspondre chaque valeur de pays présente dans les me
 #### Scenario: Pays non reconnu par le fond de carte
 - **WHEN** un pays des messages du dernier run d'import ne correspond à aucune zone du fond de carte, ou lorsqu'il s'agit de la catégorie "Non renseigné"
 - **THEN** ce pays apparaît dans le classement sous la carte avec son volume et sa part, sans colorer aucune zone de la carte et sans erreur affichée
-

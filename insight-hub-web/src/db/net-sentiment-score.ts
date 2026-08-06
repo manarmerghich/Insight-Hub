@@ -20,7 +20,10 @@ export type DailyNetSentiment = {
   netScore: number;
 };
 
-function computeNetScore(positive: number, negative: number, total: number): number {
+// Exportée pour être réutilisée par message-distribution.ts (score de
+// sentiment net par pays) : même formule que le score net global, pour
+// rester cohérent avec le reste du dashboard (voir design.md §3).
+export function computeNetScore(positive: number, negative: number, total: number): number {
   return Math.round(((positive - negative) / total) * 100);
 }
 

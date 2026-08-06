@@ -864,3 +864,126 @@ select:focus-visible {
 .word-cloud-word--neutre {
   color: var(--color-text);
 }
+
+.map-metric-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0.25rem;
+  border-radius: var(--radius-control);
+  background: var(--color-bg);
+}
+
+.map-metric-toggle__button {
+  padding: 0.375rem 0.875rem;
+  border-radius: calc(var(--radius-control) - 0.125rem);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.map-metric-toggle__button:hover:not(:disabled) {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.map-metric-toggle__button--active,
+.map-metric-toggle__button--active:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.country-map-wrap {
+  position: relative;
+  margin-top: 1.25rem;
+}
+
+.country-map {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.country-map__tooltip {
+  position: absolute;
+  z-index: 10;
+  width: 13rem;
+  max-width: calc(100% - 1rem);
+  transform: translate(-50%, -100%) translateY(-0.75rem);
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  pointer-events: none;
+}
+
+.country-map__tooltip--below {
+  transform: translate(-50%, 0) translateY(0.75rem);
+}
+
+.country-map__tooltip-title {
+  font-weight: 600;
+  margin: 0 0 0.25rem;
+}
+
+.country-map__tooltip-row {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.country-map__tooltip-row span {
+  color: var(--color-text-muted);
+}
+
+.country-map__tooltip-row--muted {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.875rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.map-legend__swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-border);
+}
+
+.map-legend__swatch--no-data {
+  background: var(--color-bg);
+}
+
+.map-legend__swatch--negative {
+  background: var(--color-error);
+}
+
+.map-legend__swatch--zero {
+  background: var(--color-border);
+}
+
+.map-legend__swatch--positive {
+  background: var(--color-success);
+}
+
+.map-legend__ramp {
+  width: 3rem;
+  height: 0.75rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--color-border);
+}
+
+.map-legend__ramp--volume {
+  background: linear-gradient(90deg, var(--color-bg), var(--color-primary));
+}
