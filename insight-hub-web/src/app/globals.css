@@ -1018,3 +1018,69 @@ select:focus-visible {
 .map-legend__ramp--volume {
   background: linear-gradient(90deg, var(--color-bg), var(--color-primary));
 }
+
+.theme-risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.theme-risk-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.theme-risk-row__label {
+  font-size: 0.8125rem;
+  color: var(--color-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  /* Comme pour rep-grid__row-header : sur mobile la colonne est trop étroite
+     pour garder les noms de thème longs sur une ligne, et le `title` (seul
+     recours pour lire le texte tronqué) ne se déclenche pas au toucher. On
+     laisse le libellé passer sur plusieurs lignes plutôt que le tronquer. */
+  .theme-risk-row__label {
+    white-space: normal;
+    overflow-wrap: break-word;
+  }
+}
+
+.theme-risk-row__score {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+/* Sens inversé par rapport à net-score-comparison : pour un score de risque,
+   une hausse est une dégradation (rouge/Error) et une baisse est une
+   amélioration (vert/Success) — voir design.md, Decision 4. */
+.theme-risk-trend {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-control);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: var(--color-bg);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.theme-risk-trend--worse {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.theme-risk-trend--better {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}

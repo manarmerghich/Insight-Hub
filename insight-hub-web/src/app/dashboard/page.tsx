@@ -13,6 +13,7 @@ import { getRepresentativeMessagesByThemeAndSentiment } from "@/db/representativ
 import { getSentimentWordCloud } from "@/db/sentiment-word-cloud";
 import { getNetSentimentPeaksWithMessages } from "@/db/sentiment-timeline-peaks";
 import { getThemeRanking } from "@/db/theme-ranking";
+import { getThemeRiskScoreTrend } from "@/db/theme-risk-score";
 import { getWeightedSentimentScore } from "@/db/weighted-sentiment-score";
 
 import { CountryMapCard } from "./country-map-card";
@@ -24,6 +25,7 @@ import { NetSentimentCard } from "./net-sentiment-card";
 import { RepresentativeMessagesCard } from "./representative-messages-card";
 import { SearchBar } from "./search-bar";
 import { SentimentWordCloudCard } from "./sentiment-word-cloud-card";
+import { ThemeRiskScoreCard } from "./theme-risk-score-card";
 import { TopThemesCard } from "./top-themes-card";
 import { WeightedSentimentCard } from "./weighted-sentiment-card";
 
@@ -91,6 +93,7 @@ export default async function DashboardPage({
     engagementRates,
     weightedScore,
     themeRanking,
+    themeRiskScores,
     representativeMessages,
     sentimentWordCloud,
   ] = await Promise.all([
@@ -103,6 +106,7 @@ export default async function DashboardPage({
     getEngagementRateBySentiment(runId, filters),
     getWeightedSentimentScore(runId, filters),
     getThemeRanking(runId, filters),
+    getThemeRiskScoreTrend(runId, filters),
     getRepresentativeMessagesByThemeAndSentiment(runId, filters),
     getSentimentWordCloud(runId, filters),
   ]);
@@ -153,6 +157,7 @@ export default async function DashboardPage({
         <EngagementRateCard entries={engagementRates} />
         <WeightedSentimentCard score={weightedScore} />
         <TopThemesCard entries={themeRanking} />
+        <ThemeRiskScoreCard entries={themeRiskScores} />
         <RepresentativeMessagesCard entries={representativeMessages} />
         <SentimentWordCloudCard entries={sentimentWordCloud} />
       </div>
