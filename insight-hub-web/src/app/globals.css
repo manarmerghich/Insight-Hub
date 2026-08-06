@@ -426,6 +426,37 @@ select:focus-visible {
   opacity: 0.75;
 }
 
+.net-score-comparison {
+  margin: 0.625rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.net-score-comparison__delta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-control);
+  font-weight: 600;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.net-score-comparison--positive .net-score-comparison__delta {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.net-score-comparison--negative .net-score-comparison__delta {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.net-score-comparison__caption {
+  margin-left: 0.375rem;
+}
+
 .empty-state {
   padding: 1.25rem;
   border: 1px dashed var(--color-border);

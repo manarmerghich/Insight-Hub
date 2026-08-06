@@ -20,6 +20,46 @@ export type DashboardFilters = {
   favoritesOnly?: boolean;
 };
 
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function parseUtcCalendarDate(value: string): Date | null {
+  if (!DATE_PATTERN.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatUtcCalendarDate(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+// Dérive la fenêtre "période précédente équivalente" (même durée en jours
+// calendaires, se terminant la veille de dateFrom) à partir du filtre de
+// période actif — voir la capacité net-sentiment-temporal-comparison,
+// Requirement: Previous Equivalent Period Derived From Active Period
+// Filter. Retourne null si dateFrom/dateTo est manquant, invalide, ou
+// incohérent (dateTo avant dateFrom) : la comparaison n'a alors pas de sens
+// (voir Requirement: Comparison Unavailable Without A Complete Period
+// Filter). Générique aux autres dimensions de filtre (plateforme, pays,
+// sentiment, thème), qui restent inchangées dans le résultat.
+export function previousPeriodFilters(filters: DashboardFilters): DashboardFilters | null {
+  if (!filters.dateFrom || !filters.dateTo) return null;
+
+  const from = parseUtcCalendarDate(filters.dateFrom);
+  const to = parseUtcCalendarDate(filters.dateTo);
+  if (!from || !to || to.getTime() < from.getTime()) return null;
+
+  const lengthInDays = Math.round((to.getTime() - from.getTime()) / MS_PER_DAY) + 1;
+  const previousDateTo = new Date(from.getTime() - MS_PER_DAY);
+  const previousDateFrom = new Date(previousDateTo.getTime() - (lengthInDays - 1) * MS_PER_DAY);
+
+  return {
+    ...filters,
+    dateFrom: formatUtcCalendarDate(previousDateFrom),
+    dateTo: formatUtcCalendarDate(previousDateTo),
+  };
+}
+
 export function dateRangeCondition(filters: DashboardFilters): SQL | undefined {
   const conditions: SQL[] = [];
 

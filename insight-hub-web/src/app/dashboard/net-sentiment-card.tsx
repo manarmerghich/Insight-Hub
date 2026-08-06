@@ -14,11 +14,17 @@ export function NetSentimentCard({
   evolution,
   peaks,
   source,
+  previousScore,
+  previousDateFrom,
+  previousDateTo,
 }: {
   score: number | null;
   evolution: DailyNetSentiment[];
   peaks: NetSentimentPeakWithMessage[];
   source: "ai" | "csv_original";
+  previousScore: number | null;
+  previousDateFrom: string | null;
+  previousDateTo: string | null;
 }) {
   return (
     <div className="card">
@@ -34,12 +40,85 @@ export function NetSentimentCard({
         </p>
       )}
       <NetScoreValue score={score} />
+      <NetScoreComparisonBadge
+        score={score}
+        previousScore={previousScore}
+        previousDateFrom={previousDateFrom}
+        previousDateTo={previousDateTo}
+      />
       {evolution.length > 0 ? (
         <EvolutionChart evolution={evolution} peaks={peaks} />
       ) : (
         <p className="empty-state">Aucun message classé pour l&apos;instant.</p>
       )}
     </div>
+  );
+}
+
+// Formate une date calendaire "YYYY-MM-DD" en UTC, cohérent avec la manière
+// dont dateRangeCondition interprète déjà ces bornes (voir dashboard-filters.ts)
+// — évite tout décalage d'un jour lié au fuseau horaire local de l'utilisateur.
+function formatPeriodDate(value: string): string {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium", timeZone: "UTC" }).format(date);
+}
+
+function formatPeriodRange(dateFrom: string, dateTo: string): string {
+  return `${formatPeriodDate(dateFrom)} – ${formatPeriodDate(dateTo)}`;
+}
+
+// Comparaison temporelle du score net (voir la capacité
+// net-sentiment-temporal-comparison) : restitution pure, aucun nouveau
+// calcul, seulement la mise en forme de deux scores déjà produits par
+// getNetSentimentScore (période courante et période précédente équivalente).
+function NetScoreComparisonBadge({
+  score,
+  previousScore,
+  previousDateFrom,
+  previousDateTo,
+}: {
+  score: number | null;
+  previousScore: number | null;
+  previousDateFrom: string | null;
+  previousDateTo: string | null;
+}) {
+  // Score courant indisponible : l'état vide déjà affiché pour le KPI
+  // suffit, un badge de comparaison serait redondant (voir design.md §5).
+  if (score === null) return null;
+
+  // Pas de filtre de période complet actif : la comparaison n'a pas de sens
+  // (voir net-sentiment-temporal-comparison, Requirement: Comparison
+  // Unavailable Without A Complete Period Filter).
+  if (!previousDateFrom || !previousDateTo) {
+    return (
+      <p className="net-score-comparison net-score-comparison--hint">
+        Sélectionnez une période pour comparer au score de la période précédente.
+      </p>
+    );
+  }
+
+  const rangeLabel = formatPeriodRange(previousDateFrom, previousDateTo);
+
+  if (previousScore === null) {
+    return (
+      <p className="net-score-comparison net-score-comparison--unavailable">
+        Comparaison indisponible : aucun message classé sur la période précédente ({rangeLabel}).
+      </p>
+    );
+  }
+
+  const delta = score - previousScore;
+  const variant = delta > 0 ? "positive" : delta < 0 ? "negative" : "neutral";
+  const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "–";
+  const formattedDelta = delta > 0 ? `+${delta}` : `${delta}`;
+
+  return (
+    <p className={`net-score-comparison net-score-comparison--${variant}`}>
+      <span className="net-score-comparison__delta">
+        <span aria-hidden="true">{arrow}</span> {formattedDelta} pts
+      </span>{" "}
+      <span className="net-score-comparison__caption">vs période précédente ({rangeLabel})</span>
+    </p>
   );
 }
 

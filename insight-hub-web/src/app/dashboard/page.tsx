@@ -1,5 +1,5 @@
 import { getDashboardFilterOptions } from "@/db/dashboard-filter-options";
-import type { DashboardFilters } from "@/db/dashboard-filters";
+import { previousPeriodFilters, type DashboardFilters } from "@/db/dashboard-filters";
 import { getEngagementRateBySentiment } from "@/db/engagement-rate";
 import { getLatestImportRun } from "@/db/latest-import-run";
 import { getCountryDistribution, getPlatformDistribution } from "@/db/message-distribution";
@@ -75,8 +75,15 @@ export default async function DashboardPage({
   const latestRun = await getLatestImportRun();
   const runId = latestRun?.id ?? null;
 
+  // Fenêtre "période précédente équivalente" pour la comparaison temporelle
+  // du score net (voir net-sentiment-temporal-comparison) : null tant que
+  // le filtre de période n'est pas complet, la comparaison n'a alors pas de
+  // sens (voir design.md §2).
+  const previousFilters = previousPeriodFilters(filters);
+
   const [
     score,
+    previousScore,
     evolution,
     platforms,
     countries,
@@ -88,6 +95,7 @@ export default async function DashboardPage({
     sentimentWordCloud,
   ] = await Promise.all([
     getNetSentimentScore(runId, filters),
+    previousFilters ? getNetSentimentScore(runId, previousFilters) : Promise.resolve(null),
     getDailyNetSentimentEvolution(runId, filters),
     getPlatformDistribution(runId, filters),
     getCountryDistribution(runId, filters),
@@ -129,6 +137,9 @@ export default async function DashboardPage({
           evolution={evolution}
           peaks={peaks}
           source={NET_SENTIMENT_SOURCE}
+          previousScore={previousScore}
+          previousDateFrom={previousFilters?.dateFrom ?? null}
+          previousDateTo={previousFilters?.dateTo ?? null}
         />
         <div className="dashboard-grid dashboard-grid--split">
           <DistributionCard
