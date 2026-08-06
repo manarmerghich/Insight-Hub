@@ -50,7 +50,7 @@ Deux projets Vercel séparés, communiquant en HTTP, partageant une base Postgre
 - **Gestionnaire de paquets** : `uv`.
 - **Périmètre** :
   - Import CSV, normalisation (espaces parasites, formats de date), déduplication, filtrage par mot-clé.
-  - Analyse IA via le **SDK Anthropic Python** : sentiment 3 classes, détection de thèmes (5-8 max), résumé exécutif.
+  - Analyse IA via le **SDK Gemini Python** (`google-genai`) : sentiment 3 classes, détection de thèmes (5-8 max), résumé exécutif — voir `.env.example` (`GEMINI_API_KEY`).
   - Traçabilité de chaque message (source, date de collecte) écrite en base.
 - **Accès aux données** : driver SQL simple côté Python (`psycopg` / SQLAlchemy Core) — **pas d'ORM Python possédant son propre schéma**, pour éviter toute divergence avec le schéma Drizzle. Les migrations restent générées et appliquées uniquement depuis `insight-hub-web`.
 - **Sécurité** : le service n'est pas public. Les appels entrants depuis `insight-hub-web` sont authentifiés par un jeton secret partagé (bearer token) transmis en en-tête, stocké comme variable d'environnement sur les deux projets Vercel.
@@ -81,6 +81,6 @@ Deux projets Vercel séparés, communiquant en HTTP, partageant une base Postgre
 ## 6. Déploiement
 
 - Deux projets Vercel distincts (`insight-hub-web`, `insight-hub-pipeline`), déployés indépendamment.
-- Variables d'environnement partagées entre les deux projets : chaîne de connexion Neon, clé API Anthropic, jeton secret d'authentification inter-services.
+- Variables d'environnement partagées entre les deux projets : chaîne de connexion Neon, clé API Gemini, jeton secret d'authentification inter-services.
 - Chaque projet a son propre cycle de déploiement/rollback — pas de couplage de build entre le frontend et le pipeline.
 

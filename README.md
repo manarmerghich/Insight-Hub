@@ -13,7 +13,7 @@ Deux services Vercel indépendants, partageant une base Neon (Postgres) commune 
 - **`insight-hub-web`** — Next.js (App Router, TypeScript). Dashboard, déclenchement des imports,
   export PDF. Accès direct à Neon via Drizzle (schéma possédé exclusivement ici).
 - **`insight-hub-pipeline`** — service Python (≥ 3.12, `uv`). Import CSV, normalisation,
-  déduplication, filtrage par mot-clé, appels IA (SDK Anthropic). Exécute le pipeline de manière
+  déduplication, filtrage par mot-clé, appels IA (SDK Gemini). Exécute le pipeline de manière
   synchrone dans la requête HTTP (pas d'orchestrateur externe). Accès à Neon en SQL simple
   (`psycopg`), jamais de modification de schéma.
 - **Neon** — base Postgres partagée ; les migrations sont générées et appliquées uniquement depuis
@@ -29,9 +29,11 @@ Détails complets : [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 Postgres.
 
 1. **Variables d'environnement** — copier `.env.example` en `.env.local` à la racine et renseigner
-   les vraies valeurs (`DATABASE_URL` Neon, `ANTHROPIC_API_KEY`, `PIPELINE_AUTH_TOKEN` — un secret
-   partagé au choix —, `PIPELINE_SERVICE_URL=http://127.0.0.1:8000`). Copier ce fichier dans
-   `insight-hub-web/.env.local` (Next.js ne lit que son propre dossier).
+   les vraies valeurs (`DATABASE_URL` Neon, `GEMINI_API_KEY` — sans elle, la classification
+   sentiment/thèmes déclenchée après import échoue silencieusement en base, sans erreur visible
+   dans le dashboard —, `PIPELINE_AUTH_TOKEN` — un secret partagé au choix —,
+   `PIPELINE_SERVICE_URL=http://127.0.0.1:8000`). Copier ce fichier dans `insight-hub-web/.env.local`
+   (Next.js ne lit que son propre dossier).
 
 2. **Installer les dépendances**
 
