@@ -5,6 +5,8 @@ import { useState } from "react";
 import type { DailyNetSentiment } from "@/db/net-sentiment-score";
 import type { NetSentimentPeakWithMessage } from "@/db/sentiment-timeline-peaks";
 
+import { buildEvolutionPathPoints } from "./chart-geometry";
+
 const CHART_WIDTH = 560;
 const CHART_HEIGHT = 160;
 const CHART_PADDING = 20;
@@ -152,24 +154,17 @@ function EvolutionChart({
 }) {
   const [activeDate, setActiveDate] = useState<string | null>(null);
 
-  const innerWidth = CHART_WIDTH - CHART_PADDING * 2;
-  const innerHeight = CHART_HEIGHT - CHART_PADDING * 2;
-  const zeroY = CHART_PADDING + innerHeight / 2;
-
-  const points = evolution.map((point, index) => {
-    const x =
-      evolution.length === 1
-        ? CHART_PADDING + innerWidth / 2
-        : CHART_PADDING + (index / (evolution.length - 1)) * innerWidth;
-    const y = CHART_PADDING + innerHeight / 2 - (point.netScore / 100) * (innerHeight / 2);
-    return { x, y, point };
-  });
+  const { points, path, zeroY } = buildEvolutionPathPoints(
+    evolution,
+    CHART_WIDTH,
+    CHART_HEIGHT,
+    CHART_PADDING,
+  );
 
   const peakByDate = new Map(peaks.map((peak) => [peak.date, peak]));
   const activePeak = activeDate ? peakByDate.get(activeDate) ?? null : null;
-  const activePoint = activeDate ? points.find(({ point }) => point.date === activeDate) : undefined;
+  const activePoint = activeDate ? points.find((point) => point.date === activeDate) : undefined;
 
-  const path = points.map((p, index) => `${index === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
   const first = evolution[0];
   const last = evolution[evolution.length - 1];
 
@@ -190,18 +185,18 @@ function EvolutionChart({
           strokeDasharray="4 4"
         />
         <path d={path} fill="none" stroke="var(--color-primary)" strokeWidth={2} />
-        {points.map(({ x, y, point }) => {
-          const peak = peakByDate.get(point.date);
+        {points.map(({ x, y, date }) => {
+          const peak = peakByDate.get(date);
           if (peak) return null;
-          return <circle key={point.date} cx={x} cy={y} r={2.5} fill="var(--color-primary)" />;
+          return <circle key={date} cx={x} cy={y} r={2.5} fill="var(--color-primary)" />;
         })}
-        {points.map(({ x, y, point }) => {
-          const peak = peakByDate.get(point.date);
+        {points.map(({ x, y, date }) => {
+          const peak = peakByDate.get(date);
           if (!peak) return null;
           const color = peak.direction === "positive" ? "var(--color-success)" : "var(--color-error)";
           return (
             <circle
-              key={point.date}
+              key={date}
               className="evolution-chart__peak"
               cx={x}
               cy={y}
@@ -212,11 +207,11 @@ function EvolutionChart({
               tabIndex={0}
               role="button"
               aria-label={`Pic ${peak.direction === "positive" ? "positif" : "négatif"} le ${peak.date} : ${formatScore(peak.netScore)} pts`}
-              onMouseEnter={() => setActiveDate(point.date)}
-              onMouseLeave={() => setActiveDate((current) => (current === point.date ? null : current))}
-              onFocus={() => setActiveDate(point.date)}
-              onBlur={() => setActiveDate((current) => (current === point.date ? null : current))}
-              onClick={() => setActiveDate((current) => (current === point.date ? null : point.date))}
+              onMouseEnter={() => setActiveDate(date)}
+              onMouseLeave={() => setActiveDate((current) => (current === date ? null : current))}
+              onFocus={() => setActiveDate(date)}
+              onBlur={() => setActiveDate((current) => (current === date ? null : current))}
+              onClick={() => setActiveDate((current) => (current === date ? null : date))}
             />
           );
         })}

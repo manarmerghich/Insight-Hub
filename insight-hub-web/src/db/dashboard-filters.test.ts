@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   favoritesCondition,
+  parseDashboardFilters,
   previousPeriodFilters,
   searchCondition,
   type DashboardFilters,
@@ -34,6 +35,78 @@ describe("favoritesCondition", () => {
 
   it("produit une condition quand favoritesOnly est vrai", () => {
     expect(favoritesCondition(filters({ favoritesOnly: true }))).toBeDefined();
+  });
+});
+
+describe("parseDashboardFilters", () => {
+  it("parse tous les champs valides depuis des searchParams simples", () => {
+    expect(
+      parseDashboardFilters({
+        dateFrom: "2026-07-01",
+        dateTo: "2026-07-07",
+        platform: "Twitter",
+        country: "France",
+        sentiment: "positif",
+        themeId: "3",
+        q: "livraison",
+        favorisUniquement: "1",
+      }),
+    ).toEqual({
+      dateFrom: "2026-07-01",
+      dateTo: "2026-07-07",
+      platform: "Twitter",
+      country: "France",
+      sentiment: "positif",
+      themeId: 3,
+      query: "livraison",
+      favoritesOnly: true,
+    });
+  });
+
+  it("prend la première valeur quand un searchParam est un tableau", () => {
+    expect(
+      parseDashboardFilters({ platform: ["Twitter", "Facebook"], dateFrom: ["2026-07-01"] }),
+    ).toEqual(
+      expect.objectContaining({ platform: "Twitter", dateFrom: "2026-07-01" }),
+    );
+  });
+
+  it("ignore les valeurs invalides plutôt que de planter", () => {
+    expect(
+      parseDashboardFilters({
+        dateFrom: "07/01/2026",
+        dateTo: "not-a-date",
+        sentiment: "furieux",
+        themeId: "not-a-number",
+      }),
+    ).toEqual({
+      dateFrom: undefined,
+      dateTo: undefined,
+      platform: undefined,
+      country: undefined,
+      sentiment: undefined,
+      themeId: undefined,
+      query: undefined,
+      favoritesOnly: false,
+    });
+  });
+
+  it("retourne des filtres vides quand aucun searchParam n'est fourni", () => {
+    expect(parseDashboardFilters({})).toEqual({
+      dateFrom: undefined,
+      dateTo: undefined,
+      platform: undefined,
+      country: undefined,
+      sentiment: undefined,
+      themeId: undefined,
+      query: undefined,
+      favoritesOnly: false,
+    });
+  });
+
+  it("considère favorisUniquement comme faux pour toute valeur autre que \"1\"", () => {
+    expect(parseDashboardFilters({ favorisUniquement: "true" }).favoritesOnly).toBe(false);
+    expect(parseDashboardFilters({ favorisUniquement: "0" }).favoritesOnly).toBe(false);
   });
 });
 

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
+    "@react-pdf/renderer": "^4.5.1",
     "@vercel/blob": "^1.1.1",
     "drizzle-orm": "^0.44.2",
     "next": "^15.5.0",

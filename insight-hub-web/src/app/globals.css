@@ -308,6 +308,41 @@ button:disabled {
   color: var(--color-text-muted);
 }
 
+.dashboard-scope-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.export-pdf-button {
+  flex: 0 0 auto;
+  padding: 0.5rem 1rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: var(--color-primary);
+  color: #ffffff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, transform 0.05s ease;
+}
+
+.export-pdf-button:hover {
+  background: var(--color-primary-hover);
+}
+
+.export-pdf-button:active {
+  transform: translateY(1px);
+}
+
+.export-pdf-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .dashboard-grid {
   display: grid;
   gap: 1.5rem;

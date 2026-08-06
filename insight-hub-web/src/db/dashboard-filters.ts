@@ -22,6 +22,41 @@ export type DashboardFilters = {
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const SENTIMENT_VALUES = new Set(["positif", "négatif", "neutre"]);
+
+export type SearchParams = Record<string, string | string[] | undefined>;
+
+function first(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function parseDate(value: string | undefined): string | undefined {
+  if (!value || !DATE_PATTERN.test(value)) return undefined;
+  return Number.isNaN(new Date(value).getTime()) ? undefined : value;
+}
+
+// Extraite de dashboard/page.tsx pour être réutilisée à l'identique par la
+// route d'export PDF (voir pdf-export, design.md, Decision "Filtres
+// partagés entre dashboard et export") — évite une divergence de parsing
+// entre les deux entrées.
+export function parseDashboardFilters(searchParams: SearchParams): DashboardFilters {
+  const sentiment = first(searchParams.sentiment);
+  const themeId = first(searchParams.themeId);
+  const parsedThemeId = themeId !== undefined ? Number.parseInt(themeId, 10) : NaN;
+
+  return {
+    dateFrom: parseDate(first(searchParams.dateFrom)),
+    dateTo: parseDate(first(searchParams.dateTo)),
+    platform: first(searchParams.platform) || undefined,
+    country: first(searchParams.country) || undefined,
+    sentiment: sentiment && SENTIMENT_VALUES.has(sentiment)
+      ? (sentiment as DashboardFilters["sentiment"])
+      : undefined,
+    themeId: Number.isInteger(parsedThemeId) ? parsedThemeId : undefined,
+    query: first(searchParams.q) || undefined,
+    favoritesOnly: first(searchParams.favorisUniquement) === "1",
+  };
+}
 
 function parseUtcCalendarDate(value: string): Date | null {
   if (!DATE_PATTERN.test(value)) return null;

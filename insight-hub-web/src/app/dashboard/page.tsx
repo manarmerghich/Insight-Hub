@@ -1,5 +1,10 @@
 import { getDashboardFilterOptions } from "@/db/dashboard-filter-options";
-import { previousPeriodFilters, type DashboardFilters } from "@/db/dashboard-filters";
+import {
+  parseDashboardFilters,
+  previousPeriodFilters,
+  type DashboardFilters,
+  type SearchParams,
+} from "@/db/dashboard-filters";
 import { getEngagementRateBySentiment } from "@/db/engagement-rate";
 import { getExecutiveSummary, type ExecutiveSummaryKpis } from "@/db/executive-summary";
 import { getLatestImportRun } from "@/db/latest-import-run";
@@ -36,39 +41,6 @@ import { WeightedSentimentCard } from "./weighted-sentiment-card";
 // ai-sentiment-analysis), donc la page ne doit jamais servir un rendu mis en
 // cache qui daterait d'avant cette classification.
 export const dynamic = "force-dynamic";
-
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-const SENTIMENT_VALUES = new Set(["positif", "négatif", "neutre"]);
-
-type SearchParams = Record<string, string | string[] | undefined>;
-
-function first(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function parseDate(value: string | undefined): string | undefined {
-  if (!value || !DATE_PATTERN.test(value)) return undefined;
-  return Number.isNaN(new Date(value).getTime()) ? undefined : value;
-}
-
-function parseDashboardFilters(searchParams: SearchParams): DashboardFilters {
-  const sentiment = first(searchParams.sentiment);
-  const themeId = first(searchParams.themeId);
-  const parsedThemeId = themeId !== undefined ? Number.parseInt(themeId, 10) : NaN;
-
-  return {
-    dateFrom: parseDate(first(searchParams.dateFrom)),
-    dateTo: parseDate(first(searchParams.dateTo)),
-    platform: first(searchParams.platform) || undefined,
-    country: first(searchParams.country) || undefined,
-    sentiment: sentiment && SENTIMENT_VALUES.has(sentiment)
-      ? (sentiment as DashboardFilters["sentiment"])
-      : undefined,
-    themeId: Number.isInteger(parsedThemeId) ? parsedThemeId : undefined,
-    query: first(searchParams.q) || undefined,
-    favoritesOnly: first(searchParams.favorisUniquement) === "1",
-  };
-}
 
 export default async function DashboardPage({
   searchParams,
@@ -135,10 +107,15 @@ export default async function DashboardPage({
     <main className="dashboard-main">
       <div className="dashboard-grid">
         {latestRun ? (
-          <p className="dashboard-scope">
-            Basé sur le dernier import : <strong>{latestRun.keyword}</strong> (
-            {latestRun.sourceFilename}, {formatDate(latestRun.startedAt)})
-          </p>
+          <div className="dashboard-scope-row">
+            <p className="dashboard-scope">
+              Basé sur le dernier import : <strong>{latestRun.keyword}</strong> (
+              {latestRun.sourceFilename}, {formatDate(latestRun.startedAt)})
+            </p>
+            <a className="export-pdf-button" href={buildExportPdfHref(filters)}>
+              Exporter en PDF
+            </a>
+          </div>
         ) : (
           <p className="empty-state">Aucun import réalisé pour l&apos;instant.</p>
         )}
@@ -183,6 +160,25 @@ export default async function DashboardPage({
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(date);
+}
+
+// Ne propage que les filtres croisés (période, plateforme, pays, sentiment,
+// thème) vers la route d'export — jamais la recherche plein texte ni le
+// filtre "favoris uniquement" (voir pdf-export, Requirement "Trigger PDF
+// Export From Current Dashboard Scope") : le PDF ne dépend pas de l'état à
+// l'écran de la recherche, seule sa section favoris dédiée applique déjà
+// systématiquement favoritesOnly (voir app/api/export-pdf/route.tsx).
+function buildExportPdfHref(filters: DashboardFilters): string {
+  const params = new URLSearchParams();
+  if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+  if (filters.dateTo) params.set("dateTo", filters.dateTo);
+  if (filters.platform) params.set("platform", filters.platform);
+  if (filters.country) params.set("country", filters.country);
+  if (filters.sentiment) params.set("sentiment", filters.sentiment);
+  if (filters.themeId !== undefined) params.set("themeId", String(filters.themeId));
+
+  const query = params.toString();
+  return query ? `/api/export-pdf?${query}` : "/api/export-pdf";
 }
 
 // Assemble le payload KPIs envoyé au résumé exécutif à partir des KPIs déjà
