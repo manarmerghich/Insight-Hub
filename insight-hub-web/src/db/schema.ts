@@ -99,6 +99,21 @@ export const themeRuns = pgTable("theme_runs", {
   errorCount: integer("error_count"),
 });
 
+export const executiveSummaries = pgTable(
+  "executive_summaries",
+  {
+    id: serial("id").primaryKey(),
+    runId: integer("run_id")
+      .notNull()
+      .references(() => importRuns.id),
+    scopeKey: text("scope_key").notNull(),
+    summaryText: text("summary_text").notNull(),
+    model: text("model").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [unique("executive_summaries_scope_key").on(table.runId, table.scopeKey)],
+);
+
 export const sentimentValidationRuns = pgTable("sentiment_validation_runs", {
   id: serial("id").primaryKey(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

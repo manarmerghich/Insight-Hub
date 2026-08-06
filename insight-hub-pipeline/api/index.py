@@ -6,6 +6,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 
 from app.auth import verify_bearer_token
 from app.db import create_import_run, get_connection, update_run_status
+from app.summary import run_summary_generation
 from app.workflows import (
     run_import_pipeline,
     run_sentiment_classification,
@@ -71,3 +72,26 @@ async def create_theme_run_endpoint(request: Request):
     verify_bearer_token(request)
     result = await run_theme_classification_step()
     return result
+
+
+@app.post("/api/summary")
+async def create_summary_endpoint(request: Request):
+    verify_bearer_token(request)
+
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="invalid JSON body") from exc
+
+    run_id = body.get("run_id") if isinstance(body, dict) else None
+    kpis = body.get("kpis") if isinstance(body, dict) else None
+    filters = body.get("filters") if isinstance(body, dict) else None
+    filters = filters if isinstance(filters, dict) else {}
+
+    if run_id is None or kpis is None:
+        raise HTTPException(status_code=400, detail="run_id and kpis are required")
+
+    result = run_summary_generation(run_id, filters, kpis)
+    if result["status"] == "error":
+        return {"status": "error", "detail": result["detail"]}
+    return {"status": "ok", "summary": result["summary"], "cached": result["cached"]}

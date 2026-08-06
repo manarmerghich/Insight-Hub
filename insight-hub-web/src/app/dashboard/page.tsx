@@ -1,6 +1,7 @@
 import { getDashboardFilterOptions } from "@/db/dashboard-filter-options";
 import { previousPeriodFilters, type DashboardFilters } from "@/db/dashboard-filters";
 import { getEngagementRateBySentiment } from "@/db/engagement-rate";
+import { getExecutiveSummary, type ExecutiveSummaryKpis } from "@/db/executive-summary";
 import { getLatestImportRun } from "@/db/latest-import-run";
 import { getCountryDistribution, getPlatformDistribution } from "@/db/message-distribution";
 import {
@@ -19,6 +20,7 @@ import { getWeightedSentimentScore } from "@/db/weighted-sentiment-score";
 import { CountryMapCard } from "./country-map-card";
 import { DistributionCard } from "./distribution-card";
 import { EngagementRateCard } from "./engagement-rate-card";
+import { ExecutiveSummaryCard } from "./executive-summary-card";
 import { FilterBar } from "./filter-bar";
 import { MessageSearchResults } from "./message-search-results";
 import { NetSentimentCard } from "./net-sentiment-card";
@@ -116,6 +118,19 @@ export default async function DashboardPage({
   const isSearchActive = Boolean(filters.query?.trim()) || Boolean(filters.favoritesOnly);
   const searchResults = isSearchActive ? await getMessageSearchResults(runId, filters) : null;
 
+  // Appelée séparément du Promise.all ci-dessus (pas dans le même lot) pour
+  // ne pas ralentir l'affichage des autres KPIs si la génération est lente
+  // (voir design.md, Decision "Dégradation gracieuse synchrone").
+  const summaryKpis = buildSummaryKpis({
+    score,
+    previousScore,
+    themeRiskScores,
+    platforms,
+    countries,
+    representativeMessages,
+  });
+  const summary = runId !== null ? await getExecutiveSummary(runId, filters, summaryKpis) : null;
+
   return (
     <main className="dashboard-main">
       <div className="dashboard-grid">
@@ -136,6 +151,7 @@ export default async function DashboardPage({
             isTruncated={searchResults.isTruncated}
           />
         )}
+        <ExecutiveSummaryCard hasImport={latestRun !== null} summary={summary} />
         <NetSentimentCard
           score={score}
           evolution={evolution}
@@ -167,4 +183,72 @@ export default async function DashboardPage({
 
 function formatDate(date: Date): string {
   return new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(date);
+}
+
+// Assemble le payload KPIs envoyé au résumé exécutif à partir des KPIs déjà
+// calculés ci-dessus par le Promise.all (lecture seule, aucun nouveau
+// calcul) — voir design.md, Goal "le résumé ne relit jamais les messages
+// bruts et ne relance jamais de classification".
+function buildSummaryKpis({
+  score,
+  previousScore,
+  themeRiskScores,
+  platforms,
+  countries,
+  representativeMessages,
+}: {
+  score: number | null;
+  previousScore: number | null;
+  themeRiskScores: Awaited<ReturnType<typeof getThemeRiskScoreTrend>>;
+  platforms: Awaited<ReturnType<typeof getPlatformDistribution>>;
+  countries: Awaited<ReturnType<typeof getCountryDistribution>>;
+  representativeMessages: Awaited<ReturnType<typeof getRepresentativeMessagesByThemeAndSentiment>>;
+}): ExecutiveSummaryKpis {
+  // Premier de themeRiskScores (déjà trié décroissant par score, voir
+  // buildThemeRiskScores) : le thème le plus à risque du scope courant.
+  const topRiskThemeEntry = themeRiskScores[0] ?? null;
+
+  // Volume classé (sentiment + thème) dans le scope courant : la somme des
+  // messageCount par thème couvre exactement les messages classés sur les
+  // deux axes (voir buildThemeRiskScores, qui n'incrémente messageCount que
+  // pour themeStatus/sentimentStatus 'completed') — évite une requête DB
+  // dédiée pour ce seul besoin de cache.
+  const classifiedCount = themeRiskScores.reduce((sum, entry) => sum + entry.messageCount, 0);
+
+  const topRiskThemeMessages = topRiskThemeEntry
+    ? representativeMessages.find((entry) => entry.themeId === topRiskThemeEntry.themeId)
+    : undefined;
+  const representativeMessage = topRiskThemeMessages?.bySentiment.négatif ?? null;
+
+  return {
+    netSentimentScore: score,
+    netSentimentTrend: score !== null && previousScore !== null ? score - previousScore : null,
+    topRiskTheme:
+      topRiskThemeEntry && topRiskThemeEntry.messageCount > 0
+        ? {
+            label: topRiskThemeEntry.label,
+            score: topRiskThemeEntry.score,
+            trend: topRiskThemeEntry.trend,
+          }
+        : null,
+    platformDistribution: platforms.map((entry) => ({
+      label: entry.label,
+      share: entry.share,
+      messageCount: entry.messageCount,
+    })),
+    countryDistribution: countries.map((entry) => ({
+      label: entry.label,
+      share: entry.share,
+      messageCount: entry.messageCount,
+      netScore: entry.netScore,
+    })),
+    representativeMessage: representativeMessage
+      ? {
+          text: representativeMessage.text,
+          user: representativeMessage.user,
+          platform: representativeMessage.platform,
+        }
+      : null,
+    classifiedCount,
+  };
 }

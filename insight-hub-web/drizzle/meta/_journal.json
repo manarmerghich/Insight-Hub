@@ -36,6 +36,13 @@
       "when": 1785972123413,
       "tag": "0004_lyrical_guardsmen",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786041812206,
+      "tag": "0005_numerous_warbound",
+      "breakpoints": true
     }
   ]
 }
