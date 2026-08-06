@@ -8,6 +8,7 @@ import {
   getNetSentimentScore,
   NET_SENTIMENT_SOURCE,
 } from "@/db/net-sentiment-score";
+import { getMessageSearchResults } from "@/db/message-search";
 import { getNetSentimentPeaksWithMessages } from "@/db/sentiment-timeline-peaks";
 import { getThemeRanking } from "@/db/theme-ranking";
 import { getWeightedSentimentScore } from "@/db/weighted-sentiment-score";
@@ -15,7 +16,9 @@ import { getWeightedSentimentScore } from "@/db/weighted-sentiment-score";
 import { DistributionCard } from "./distribution-card";
 import { EngagementRateCard } from "./engagement-rate-card";
 import { FilterBar } from "./filter-bar";
+import { MessageSearchResults } from "./message-search-results";
 import { NetSentimentCard } from "./net-sentiment-card";
+import { SearchBar } from "./search-bar";
 import { TopThemesCard } from "./top-themes-card";
 import { WeightedSentimentCard } from "./weighted-sentiment-card";
 
@@ -53,6 +56,8 @@ function parseDashboardFilters(searchParams: SearchParams): DashboardFilters {
       ? (sentiment as DashboardFilters["sentiment"])
       : undefined,
     themeId: Number.isInteger(parsedThemeId) ? parsedThemeId : undefined,
+    query: first(searchParams.q) || undefined,
+    favoritesOnly: first(searchParams.favorisUniquement) === "1",
   };
 }
 
@@ -87,6 +92,9 @@ export default async function DashboardPage({
 
   const peaks = await getNetSentimentPeaksWithMessages(runId, evolution, filters);
 
+  const isSearchActive = Boolean(filters.query?.trim()) || Boolean(filters.favoritesOnly);
+  const searchResults = isSearchActive ? await getMessageSearchResults(runId, filters) : null;
+
   return (
     <main className="dashboard-main">
       <div className="dashboard-grid">
@@ -99,6 +107,14 @@ export default async function DashboardPage({
           <p className="empty-state">Aucun import réalisé pour l&apos;instant.</p>
         )}
         <FilterBar options={filterOptions} />
+        <SearchBar />
+        {searchResults && (
+          <MessageSearchResults
+            results={searchResults.results}
+            totalCount={searchResults.totalCount}
+            isTruncated={searchResults.isTruncated}
+          />
+        )}
         <NetSentimentCard
           score={score}
           evolution={evolution}

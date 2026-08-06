@@ -16,6 +16,8 @@ export type DashboardFilters = {
   country?: string;
   sentiment?: "positif" | "négatif" | "neutre";
   themeId?: number;
+  query?: string;
+  favoritesOnly?: boolean;
 };
 
 export function dateRangeCondition(filters: DashboardFilters): SQL | undefined {
@@ -69,6 +71,21 @@ export function sentimentCondition(
   if (filters.sentiment === "positif") return inArray(normalizedOriginal, [...POSITIVE_LABELS]);
   if (filters.sentiment === "négatif") return inArray(normalizedOriginal, [...NEGATIVE_LABELS]);
   return not(inArray(normalizedOriginal, [...POSITIVE_LABELS, ...NEGATIVE_LABELS]));
+}
+
+// Non incluses dans dashboardFilterConditions à dessein : la recherche et le
+// filtre favoris ne doivent pas s'appliquer aux KPIs agrégés existants (voir
+// proposal.md de add-search-favorites-dashboard, capacité dashboard-cross-filters
+// non modifiée) — seule la liste de résultats de message-search.ts les combine.
+export function searchCondition(filters: DashboardFilters): SQL | undefined {
+  const query = filters.query?.trim();
+  if (!query) return undefined;
+  return sql`${messages.searchVector} @@ websearch_to_tsquery('simple', ${query})`;
+}
+
+export function favoritesCondition(filters: DashboardFilters): SQL | undefined {
+  if (!filters.favoritesOnly) return undefined;
+  return eq(messages.isFavorite, true);
 }
 
 export function dashboardFilterConditions(

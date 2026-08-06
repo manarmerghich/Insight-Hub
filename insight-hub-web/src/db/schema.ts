@@ -1,4 +1,25 @@
-import { integer, numeric, pgTable, serial, text, timestamp, unique } from "drizzle-orm/pg-core";
+import type { SQL } from "drizzle-orm";
+import { sql } from "drizzle-orm";
+import {
+  boolean,
+  customType,
+  index,
+  integer,
+  numeric,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+  unique,
+} from "drizzle-orm/pg-core";
+
+// Pas de type `tsvector` natif dans drizzle-orm/pg-core — nécessaire pour la
+// colonne générée de recherche plein texte (voir message-search).
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 
 export const importRuns = pgTable("import_runs", {
   id: serial("id").primaryKey(),
@@ -39,10 +60,17 @@ export const messages = pgTable(
     likes: integer("likes"),
     country: text("country"),
     keyword: text("keyword").notNull(),
+    isFavorite: boolean("is_favorite").notNull().default(false),
+    // Config 'simple' (pas 'english'/'french') : le contenu importé n'a pas de
+    // langue garantie, voir design.md de add-search-favorites-dashboard.
+    searchVector: tsvector("search_vector")
+      .notNull()
+      .generatedAlwaysAs((): SQL => sql`to_tsvector('simple', ${messages.text})`),
   },
   (table) => [
     // Dedup key per design.md: platform + author + normalized text + timestamp.
     unique("messages_dedup_key").on(table.platform, table.user, table.text, table.timestamp),
+    index("messages_search_vector_idx").using("gin", table.searchVector),
   ],
 );
 
