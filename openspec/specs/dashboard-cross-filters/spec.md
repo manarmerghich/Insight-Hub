@@ -13,7 +13,7 @@ Le système SHALL proposer, sur la page dashboard, cinq dimensions de filtre ind
 - **THEN** la page affiche cinq contrôles distincts permettant de filtrer par période, plateforme, pays, sentiment et thème
 
 ### Requirement: Combined Filtering Applied To Existing KPIs
-Le système SHALL restreindre, lorsque un ou plusieurs filtres croisés sont actifs, les données de tous les KPIs déjà affichés sur le dashboard (score net et son évolution, répartition par plateforme, répartition par pays, taux d'engagement par sentiment, score de sentiment net pondéré par engagement, classement des thèmes par volume de messages) aux seuls messages respectant l'ensemble des filtres actifs (combinaison en ET), en plus du scope existant du dernier run d'import. Aucun nouveau calcul IA n'est déclenché par l'application d'un filtre.
+Le système SHALL restreindre, lorsque un ou plusieurs filtres croisés sont actifs, les données de tous les KPIs déjà affichés sur le dashboard (score net et son évolution, répartition par plateforme, répartition par pays, taux d'engagement par sentiment, score de sentiment net pondéré par engagement, classement des thèmes par volume de messages, messages représentatifs par thème et sentiment) aux seuls messages respectant l'ensemble des filtres actifs (combinaison en ET), en plus du scope existant du dernier run d'import. Aucun nouveau calcul IA n'est déclenché par l'application d'un filtre.
 
 #### Scenario: Un seul filtre actif
 - **WHEN** l'utilisateur sélectionne une seule dimension de filtre (ex. une plateforme)

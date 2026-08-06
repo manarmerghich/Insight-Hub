@@ -14,7 +14,9 @@ export type EngagementRateEntry = {
   avgRetweets: number;
 };
 
-const CATEGORY_TO_LABEL: Record<SentimentCategory, SentimentLabel> = {
+// Exportées pour être réutilisées par representative-messages.ts plutôt que
+// dupliquées : même mapping catégorie → libellé, même garde de type.
+export const CATEGORY_TO_LABEL: Record<SentimentCategory, SentimentLabel> = {
   positive: "positif",
   negative: "négatif",
   neutral: "neutre",
@@ -22,7 +24,7 @@ const CATEGORY_TO_LABEL: Record<SentimentCategory, SentimentLabel> = {
 
 const SENTIMENT_LABELS = new Set<SentimentLabel>(["positif", "négatif", "neutre"]);
 
-function isSentimentLabel(value: string | null): value is SentimentLabel {
+export function isSentimentLabel(value: string | null): value is SentimentLabel {
   return value !== null && SENTIMENT_LABELS.has(value as SentimentLabel);
 }
 
