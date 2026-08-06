@@ -18,6 +18,7 @@ export type DashboardFilters = {
   themeId?: number;
   query?: string;
   favoritesOnly?: boolean;
+  compareKeyword?: string;
 };
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -55,6 +56,7 @@ export function parseDashboardFilters(searchParams: SearchParams): DashboardFilt
     themeId: Number.isInteger(parsedThemeId) ? parsedThemeId : undefined,
     query: first(searchParams.q) || undefined,
     favoritesOnly: first(searchParams.favorisUniquement) === "1",
+    compareKeyword: first(searchParams.compareKeyword) || undefined,
   };
 }
 

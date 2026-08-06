@@ -7,6 +7,7 @@ import {
 } from "@/db/dashboard-filters";
 import { getEngagementRateBySentiment } from "@/db/engagement-rate";
 import { getExecutiveSummary, type ExecutiveSummaryKpis } from "@/db/executive-summary";
+import { getComparableKeywords, getLatestRunIdForKeyword } from "@/db/keyword-comparison";
 import { getLatestImportRun } from "@/db/latest-import-run";
 import { getCountryDistribution, getPlatformDistribution } from "@/db/message-distribution";
 import {
@@ -27,6 +28,7 @@ import { DistributionCard } from "./distribution-card";
 import { EngagementRateCard } from "./engagement-rate-card";
 import { ExecutiveSummaryCard } from "./executive-summary-card";
 import { FilterBar } from "./filter-bar";
+import { KeywordComparisonCard } from "./keyword-comparison-card";
 import { MessageSearchResults } from "./message-search-results";
 import { NetSentimentCard } from "./net-sentiment-card";
 import { RepresentativeMessagesCard } from "./representative-messages-card";
@@ -57,6 +59,15 @@ export default async function DashboardPage({
   // sens (voir design.md §2).
   const previousFilters = previousPeriodFilters(filters);
 
+  // Comparaison à un second mot-clé déjà importé (voir keyword-comparison) :
+  // résolution du run comparé avant le Promise.all principal, pour pouvoir
+  // y injecter les appels KPI supplémentaires avec compareRunId.
+  const compareKeyword = filters.compareKeyword?.trim() || null;
+  const [comparableKeywords, compareRunId] = await Promise.all([
+    getComparableKeywords(latestRun?.keyword ?? null),
+    compareKeyword ? getLatestRunIdForKeyword(compareKeyword) : Promise.resolve(null),
+  ]);
+
   const [
     score,
     previousScore,
@@ -70,6 +81,10 @@ export default async function DashboardPage({
     themeRiskScores,
     representativeMessages,
     sentimentWordCloud,
+    compareScore,
+    comparePlatforms,
+    compareCountries,
+    compareThemeRanking,
   ] = await Promise.all([
     getNetSentimentScore(runId, filters),
     previousFilters ? getNetSentimentScore(runId, previousFilters) : Promise.resolve(null),
@@ -83,6 +98,15 @@ export default async function DashboardPage({
     getThemeRiskScoreTrend(runId, filters),
     getRepresentativeMessagesByThemeAndSentiment(runId, filters),
     getSentimentWordCloud(runId, filters),
+    // Réutilisation directe des fonctions KPI existantes avec le runId
+    // résolu pour le mot-clé comparé et les mêmes filtres croisés que le
+    // run courant (voir design.md, Decision "Réutilisation directe des
+    // fonctions KPI existantes avec le second runId") : aucun nouveau
+    // calcul, ces fonctions gèrent déjà runId === null.
+    getNetSentimentScore(compareRunId, filters),
+    getPlatformDistribution(compareRunId, filters),
+    getCountryDistribution(compareRunId, filters),
+    getThemeRanking(compareRunId, filters),
   ]);
 
   const peaks = await getNetSentimentPeaksWithMessages(runId, evolution, filters);
@@ -128,6 +152,20 @@ export default async function DashboardPage({
             isTruncated={searchResults.isTruncated}
           />
         )}
+        <KeywordComparisonCard
+          comparableKeywords={comparableKeywords}
+          compareKeyword={compareKeyword}
+          compareRunId={compareRunId}
+          currentKeyword={latestRun?.keyword ?? "Run courant"}
+          currentScore={score}
+          currentPlatforms={platforms}
+          currentCountries={countries}
+          currentThemes={themeRanking}
+          compareScore={compareScore}
+          comparePlatforms={comparePlatforms}
+          compareCountries={compareCountries}
+          compareThemes={compareThemeRanking}
+        />
         <ExecutiveSummaryCard hasImport={latestRun !== null} summary={summary} />
         <NetSentimentCard
           score={score}

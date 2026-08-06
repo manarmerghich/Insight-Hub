@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  dashboardFilterConditions,
   favoritesCondition,
   parseDashboardFilters,
   previousPeriodFilters,
@@ -27,6 +28,18 @@ describe("searchCondition", () => {
   });
 });
 
+describe("dashboardFilterConditions", () => {
+  it("ignore compareKeyword : aucune condition SQL supplémentaire n'est générée pour ce champ", () => {
+    const withoutCompare = dashboardFilterConditions(filters({ platform: "Twitter" }), "ai");
+    const withCompare = dashboardFilterConditions(
+      filters({ platform: "Twitter", compareKeyword: "Adidas" }),
+      "ai",
+    );
+
+    expect(withCompare).toHaveLength(withoutCompare.length);
+  });
+});
+
 describe("favoritesCondition", () => {
   it("ignore le filtre quand favoritesOnly est absent ou faux", () => {
     expect(favoritesCondition(filters())).toBeUndefined();
@@ -50,6 +63,7 @@ describe("parseDashboardFilters", () => {
         themeId: "3",
         q: "livraison",
         favorisUniquement: "1",
+        compareKeyword: "Adidas",
       }),
     ).toEqual({
       dateFrom: "2026-07-01",
@@ -60,7 +74,16 @@ describe("parseDashboardFilters", () => {
       themeId: 3,
       query: "livraison",
       favoritesOnly: true,
+      compareKeyword: "Adidas",
     });
+  });
+
+  it("parse compareKeyword absent comme undefined", () => {
+    expect(parseDashboardFilters({}).compareKeyword).toBeUndefined();
+  });
+
+  it("parse une chaîne vide de compareKeyword comme undefined", () => {
+    expect(parseDashboardFilters({ compareKeyword: "" }).compareKeyword).toBeUndefined();
   });
 
   it("prend la première valeur quand un searchParam est un tableau", () => {
