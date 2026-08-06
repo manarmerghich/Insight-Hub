@@ -812,3 +812,55 @@ select:focus-visible {
   padding: 0.75rem;
   font-size: 0.8125rem;
 }
+
+.word-cloud {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.word-cloud-section__label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.625rem;
+}
+
+.word-cloud-section__label--positif {
+  color: var(--color-success-text);
+}
+
+.word-cloud-section__label--négatif {
+  color: var(--color-error-text);
+}
+
+.word-cloud-section__label--neutre {
+  color: var(--color-text-muted);
+}
+
+.word-cloud-section__words {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.375rem 0.75rem;
+}
+
+.word-cloud-word {
+  line-height: 1.2;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.word-cloud-word--positif {
+  color: var(--color-success-text);
+}
+
+.word-cloud-word--négatif {
+  color: var(--color-error-text);
+}
+
+.word-cloud-word--neutre {
+  color: var(--color-text);
+}

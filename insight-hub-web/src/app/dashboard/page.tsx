@@ -10,6 +10,7 @@ import {
 } from "@/db/net-sentiment-score";
 import { getMessageSearchResults } from "@/db/message-search";
 import { getRepresentativeMessagesByThemeAndSentiment } from "@/db/representative-messages";
+import { getSentimentWordCloud } from "@/db/sentiment-word-cloud";
 import { getNetSentimentPeaksWithMessages } from "@/db/sentiment-timeline-peaks";
 import { getThemeRanking } from "@/db/theme-ranking";
 import { getWeightedSentimentScore } from "@/db/weighted-sentiment-score";
@@ -21,6 +22,7 @@ import { MessageSearchResults } from "./message-search-results";
 import { NetSentimentCard } from "./net-sentiment-card";
 import { RepresentativeMessagesCard } from "./representative-messages-card";
 import { SearchBar } from "./search-bar";
+import { SentimentWordCloudCard } from "./sentiment-word-cloud-card";
 import { TopThemesCard } from "./top-themes-card";
 import { WeightedSentimentCard } from "./weighted-sentiment-card";
 
@@ -82,6 +84,7 @@ export default async function DashboardPage({
     weightedScore,
     themeRanking,
     representativeMessages,
+    sentimentWordCloud,
   ] = await Promise.all([
     getNetSentimentScore(runId, filters),
     getDailyNetSentimentEvolution(runId, filters),
@@ -92,6 +95,7 @@ export default async function DashboardPage({
     getWeightedSentimentScore(runId, filters),
     getThemeRanking(runId, filters),
     getRepresentativeMessagesByThemeAndSentiment(runId, filters),
+    getSentimentWordCloud(runId, filters),
   ]);
 
   const peaks = await getNetSentimentPeaksWithMessages(runId, evolution, filters);
@@ -143,6 +147,7 @@ export default async function DashboardPage({
         <WeightedSentimentCard score={weightedScore} />
         <TopThemesCard entries={themeRanking} />
         <RepresentativeMessagesCard entries={representativeMessages} />
+        <SentimentWordCloudCard entries={sentimentWordCloud} />
       </div>
     </main>
   );
