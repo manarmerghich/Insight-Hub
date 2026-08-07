@@ -39,7 +39,7 @@ class TestCsvIngestionIntegration:
         assert len(filtered) == 46
 
         run_id = create_import_run(
-            db_conn, keyword=keyword, source_filename="social-media-sentiments_analysis.csv"
+            db_conn, keyword=keyword, source_filename="social-media-sentiments_analysis.csv", visitor_id="test-visitor"
         )
         with db_conn.cursor() as cur:
             cur.execute("SELECT status, finished_at FROM import_runs WHERE id = %s", (run_id,))
@@ -48,7 +48,7 @@ class TestCsvIngestionIntegration:
         assert finished_at is None
 
         inserted = insert_messages(
-            db_conn, run_id, "social-media-sentiments_analysis.csv", keyword, filtered
+            db_conn, run_id, "social-media-sentiments_analysis.csv", keyword, "test-visitor", filtered
         )
         assert inserted == 46
         update_run_status(
@@ -86,10 +86,10 @@ class TestCsvIngestionIntegration:
         ]
 
         run_id_1 = create_import_run(
-            db_conn, keyword=keyword, source_filename="social-media-sentiments_analysis.csv"
+            db_conn, keyword=keyword, source_filename="social-media-sentiments_analysis.csv", visitor_id="test-visitor"
         )
         first_inserted = insert_messages(
-            db_conn, run_id_1, "social-media-sentiments_analysis.csv", keyword, filtered
+            db_conn, run_id_1, "social-media-sentiments_analysis.csv", keyword, "test-visitor", filtered
         )
         assert first_inserted == 46
         update_run_status(
@@ -101,10 +101,10 @@ class TestCsvIngestionIntegration:
         )
 
         run_id_2 = create_import_run(
-            db_conn, keyword=keyword, source_filename="social-media-sentiments_analysis.csv"
+            db_conn, keyword=keyword, source_filename="social-media-sentiments_analysis.csv", visitor_id="test-visitor"
         )
         second_inserted = insert_messages(
-            db_conn, run_id_2, "social-media-sentiments_analysis.csv", keyword, filtered
+            db_conn, run_id_2, "social-media-sentiments_analysis.csv", keyword, "test-visitor", filtered
         )
         assert second_inserted == 0
         update_run_status(
@@ -124,6 +124,43 @@ class TestCsvIngestionIntegration:
         assert matched_count == 46
         assert retained_count == 0
 
+    def test_two_different_visitors_importing_the_same_file_both_keep_their_messages(
+        self, db_conn
+    ):
+        # Régression du bug rapporté sur add-visitor-session-scoping : la clé de
+        # déduplication doit être scopée par visiteur, pas globale — sinon le
+        # second visiteur à importer un contenu identique se retrouve avec
+        # retained_count=0 (dédupliqué contre les messages du premier), alors
+        # que son import a pourtant "réussi".
+        raw_rows = _load_reference_rows()
+        keyword = "day"
+        filtered = [
+            normalize_row(r) for r in raw_rows if matches_keyword(normalize_row(r)["text"], keyword)
+        ]
+
+        run_id_visitor_a = create_import_run(
+            db_conn,
+            keyword=keyword,
+            source_filename="social-media-sentiments_analysis.csv",
+            visitor_id="visitor-a",
+        )
+        inserted_a = insert_messages(
+            db_conn, run_id_visitor_a, "social-media-sentiments_analysis.csv", keyword, "visitor-a", filtered
+        )
+
+        run_id_visitor_b = create_import_run(
+            db_conn,
+            keyword=keyword,
+            source_filename="social-media-sentiments_analysis.csv",
+            visitor_id="visitor-b",
+        )
+        inserted_b = insert_messages(
+            db_conn, run_id_visitor_b, "social-media-sentiments_analysis.csv", keyword, "visitor-b", filtered
+        )
+
+        assert inserted_a == 46
+        assert inserted_b == 46
+
     def test_intra_file_duplicate_is_collapsed_on_a_single_insert(self, db_conn):
         raw_rows = _load_reference_rows()
         keyword = "day"
@@ -133,16 +170,16 @@ class TestCsvIngestionIntegration:
         rows_with_intra_file_dupe = filtered + [filtered[0]]
 
         run_id = create_import_run(
-            db_conn, keyword=keyword, source_filename="social-media-sentiments_analysis.csv"
+            db_conn, keyword=keyword, source_filename="social-media-sentiments_analysis.csv", visitor_id="test-visitor"
         )
         inserted = insert_messages(
-            db_conn, run_id, "social-media-sentiments_analysis.csv", keyword, rows_with_intra_file_dupe
+            db_conn, run_id, "social-media-sentiments_analysis.csv", keyword, "test-visitor", rows_with_intra_file_dupe
         )
 
         assert inserted == 46
 
     def test_run_status_reflects_failure(self, db_conn):
-        run_id = create_import_run(db_conn, keyword="x", source_filename="broken.csv")
+        run_id = create_import_run(db_conn, keyword="x", source_filename="broken.csv", visitor_id="test-visitor")
         update_run_status(db_conn, run_id, "error", error_message="unreadable CSV file: bad encoding")
 
         with db_conn.cursor() as cur:

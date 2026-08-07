@@ -15,8 +15,8 @@ DISCOVERED_THEMES = [
 def _insert_message(conn, *, run_id: int, text: str) -> int:
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO messages (run_id, source, text, timestamp, \"user\", platform, keyword) "
-            "VALUES (%s, 'test.csv', %s, %s, 'user1', 'Twitter', 'day') RETURNING id",
+            "INSERT INTO messages (run_id, visitor_id, source, text, timestamp, \"user\", platform, keyword) "
+            "VALUES (%s, 'test-visitor', 'test.csv', %s, %s, 'user1', 'Twitter', 'day') RETURNING id",
             (run_id, text, datetime.now(timezone.utc)),
         )
         message_id = cur.fetchone()[0]
@@ -59,7 +59,7 @@ class FakeClient:
 @pytest.mark.integration
 class TestThemeClassificationIntegration:
     def test_bootstrap_discovery_on_empty_database_then_classifies_pending_messages(self, db_conn):
-        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
+        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv", visitor_id="test-visitor")
         message_ids = [
             _insert_message(db_conn, run_id=run_id, text="What a beautiful day"),
             _insert_message(db_conn, run_id=run_id, text="Worst day ever"),
@@ -85,7 +85,7 @@ class TestThemeClassificationIntegration:
         assert rows == [("completed",), ("completed",)]
 
     def test_resuming_across_two_invocations_does_not_double_count_or_rediscover(self, db_conn):
-        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
+        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv", visitor_id="test-visitor")
         message_ids = [
             _insert_message(db_conn, run_id=run_id, text="What a beautiful day"),
             _insert_message(db_conn, run_id=run_id, text="Worst day ever"),
@@ -107,7 +107,7 @@ class TestThemeClassificationIntegration:
         assert client.models.call_count == 2
 
     def test_discovery_failure_leaves_messages_pending_for_a_later_invocation(self, db_conn):
-        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
+        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv", visitor_id="test-visitor")
         message_id = _insert_message(db_conn, run_id=run_id, text="What a beautiful day")
 
         class FailingModels:

@@ -21,19 +21,27 @@ const tsvector = customType<{ data: string }>({
   },
 });
 
-export const importRuns = pgTable("import_runs", {
-  id: serial("id").primaryKey(),
-  keyword: text("keyword").notNull(),
-  sourceFilename: text("source_filename").notNull(),
-  status: text("status").notNull().default("running"),
-  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
-  finishedAt: timestamp("finished_at", { withTimezone: true }),
-  // Messages matching the keyword, before dedup — distinct from retainedCount
-  // (newly inserted after dedup), so the UI can tell "no match" from "already imported".
-  matchedCount: integer("matched_count"),
-  retainedCount: integer("retained_count"),
-  errorMessage: text("error_message"),
-});
+export const importRuns = pgTable(
+  "import_runs",
+  {
+    id: serial("id").primaryKey(),
+    keyword: text("keyword").notNull(),
+    sourceFilename: text("source_filename").notNull(),
+    status: text("status").notNull().default("running"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    // Messages matching the keyword, before dedup — distinct from retainedCount
+    // (newly inserted after dedup), so the UI can tell "no match" from "already imported".
+    matchedCount: integer("matched_count"),
+    retainedCount: integer("retained_count"),
+    errorMessage: text("error_message"),
+    // Identifiant de session anonyme (cookie, voir add-visitor-session-scoping) —
+    // isole les données d'un visiteur sans nécessiter de compte. `messages` n'a
+    // pas besoin de sa propre colonne : déjà scopée transitivement via runId.
+    visitorId: text("visitor_id").notNull(),
+  },
+  (table) => [index("import_runs_visitor_id_idx").on(table.visitorId)],
+);
 
 export const messages = pgTable(
   "messages",
@@ -42,6 +50,12 @@ export const messages = pgTable(
     runId: integer("run_id")
       .notNull()
       .references(() => importRuns.id),
+    // Dénormalisé depuis import_runs.visitor_id (voir add-visitor-session-scoping,
+    // design.md, Decision "Stockage") — indispensable ici : une contrainte UNIQUE
+    // ne peut pas référencer une colonne d'une autre table, et la déduplication
+    // doit être scopée par visiteur, pas globale (deux visiteurs qui importent le
+    // même fichier ne doivent pas se dédupliquer l'un l'autre).
+    visitorId: text("visitor_id").notNull(),
     source: text("source").notNull(),
     collectedAt: timestamp("collected_at", { withTimezone: true }).notNull().defaultNow(),
     text: text("text").notNull(),
@@ -68,8 +82,16 @@ export const messages = pgTable(
       .generatedAlwaysAs((): SQL => sql`to_tsvector('simple', ${messages.text})`),
   },
   (table) => [
-    // Dedup key per design.md: platform + author + normalized text + timestamp.
-    unique("messages_dedup_key").on(table.platform, table.user, table.text, table.timestamp),
+    // Dedup key per design.md: visiteur + platform + author + normalized text +
+    // timestamp — scopée par visiteur (voir add-visitor-session-scoping) : deux
+    // visiteurs qui importent le même contenu ne se déduplique jamais l'un l'autre.
+    unique("messages_dedup_key").on(
+      table.visitorId,
+      table.platform,
+      table.user,
+      table.text,
+      table.timestamp,
+    ),
     index("messages_search_vector_idx").using("gin", table.searchVector),
   ],
 );

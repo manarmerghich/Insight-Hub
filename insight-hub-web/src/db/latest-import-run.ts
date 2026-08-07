@@ -15,7 +15,9 @@ export type LatestImportRun = {
 // meaningful default scope for the dashboard, so it's skipped in favor of
 // the last run that produced something to show. Ordered by id (serial,
 // monotonic with insertion) rather than startedAt to avoid ties.
-export async function getLatestImportRun(): Promise<LatestImportRun | null> {
+// Scopé au visiteur courant (voir add-visitor-session-scoping) : deux
+// visiteurs distincts ne doivent jamais partager le même "dernier run".
+export async function getLatestImportRun(visitorId: string): Promise<LatestImportRun | null> {
   const [run] = await db
     .select({
       id: importRuns.id,
@@ -25,6 +27,7 @@ export async function getLatestImportRun(): Promise<LatestImportRun | null> {
     })
     .from(importRuns)
     .innerJoin(messages, eq(messages.runId, importRuns.id))
+    .where(eq(importRuns.visitorId, visitorId))
     .groupBy(importRuns.id)
     .orderBy(desc(importRuns.id))
     .limit(1);

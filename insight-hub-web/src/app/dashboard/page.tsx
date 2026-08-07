@@ -22,6 +22,7 @@ import { getNetSentimentPeaksWithMessages } from "@/db/sentiment-timeline-peaks"
 import { getThemeRanking } from "@/db/theme-ranking";
 import { getThemeRiskScoreTrend } from "@/db/theme-risk-score";
 import { getWeightedSentimentScore } from "@/db/weighted-sentiment-score";
+import { getCurrentVisitorId } from "@/lib/visitor";
 
 import { CountryMapCard } from "./country-map-card";
 import { DistributionCard } from "./distribution-card";
@@ -50,7 +51,8 @@ export default async function DashboardPage({
   searchParams: Promise<SearchParams>;
 }) {
   const filters = parseDashboardFilters(await searchParams);
-  const latestRun = await getLatestImportRun();
+  const visitorId = await getCurrentVisitorId();
+  const latestRun = await getLatestImportRun(visitorId);
   const runId = latestRun?.id ?? null;
 
   // Fenêtre "période précédente équivalente" pour la comparaison temporelle
@@ -64,8 +66,8 @@ export default async function DashboardPage({
   // y injecter les appels KPI supplémentaires avec compareRunId.
   const compareKeyword = filters.compareKeyword?.trim() || null;
   const [comparableKeywords, compareRunId] = await Promise.all([
-    getComparableKeywords(latestRun?.keyword ?? null),
-    compareKeyword ? getLatestRunIdForKeyword(compareKeyword) : Promise.resolve(null),
+    getComparableKeywords(latestRun?.keyword ?? null, visitorId),
+    compareKeyword ? getLatestRunIdForKeyword(compareKeyword, visitorId) : Promise.resolve(null),
   ]);
 
   const [

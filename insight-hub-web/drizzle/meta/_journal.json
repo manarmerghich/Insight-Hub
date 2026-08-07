@@ -43,6 +43,20 @@
       "when": 1786041812206,
       "tag": "0005_numerous_warbound",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786117121218,
+      "tag": "0006_pretty_sphinx",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786123866723,
+      "tag": "0007_dazzling_doctor_doom",
+      "breakpoints": true
     }
   ]
 }

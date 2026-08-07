@@ -33,9 +33,9 @@ def _insert_theme(conn, *, label: str) -> int:
 def _insert_message(conn, *, run_id: int, theme_id: int, theme_status: str) -> None:
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO messages (run_id, source, text, timestamp, \"user\", platform, keyword, "
+            "INSERT INTO messages (run_id, visitor_id, source, text, timestamp, \"user\", platform, keyword, "
             "theme_id, theme_status) "
-            "VALUES (%s, 'test.csv', 'a message', %s, 'user1', 'Twitter', 'day', %s, %s)",
+            "VALUES (%s, 'test-visitor', 'test.csv', 'a message', %s, 'user1', 'Twitter', 'day', %s, %s)",
             (run_id, datetime.now(timezone.utc), theme_id, theme_status),
         )
     conn.commit()
@@ -55,7 +55,7 @@ class TestThemeRankingIntegration:
         assert dict(rows) == {"Support": 0, "Prix": 0}
 
     def test_pending_and_error_messages_are_excluded_from_the_ranking(self, db_conn):
-        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
+        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv", visitor_id="test-visitor")
         support_id = _insert_theme(db_conn, label="Support")
         _insert_theme(db_conn, label="Prix")
 
@@ -70,7 +70,7 @@ class TestThemeRankingIntegration:
         assert dict(rows) == {"Support": 1, "Prix": 0}
 
     def test_themes_are_ordered_by_message_count_descending(self, db_conn):
-        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
+        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv", visitor_id="test-visitor")
         support_id = _insert_theme(db_conn, label="Support")
         price_id = _insert_theme(db_conn, label="Prix")
 

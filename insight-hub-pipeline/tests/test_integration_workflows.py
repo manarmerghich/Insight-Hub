@@ -85,7 +85,7 @@ class TestImportPipelineAutoTriggersSentimentClassification:
         self, db_conn, postgres_dsn, monkeypatch
     ):
         monkeypatch.setenv("DATABASE_URL", postgres_dsn)
-        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
+        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv", visitor_id="test-visitor")
 
         client = FakeClient()
         theme_client = FakeThemeClient()
@@ -93,6 +93,7 @@ class TestImportPipelineAutoTriggersSentimentClassification:
             run_import_pipeline(
                 run_id=run_id,
                 keyword="day",
+                visitor_id="test-visitor",
                 source_filename="test.csv",
                 rows=[_raw_row("What a beautiful day")],
                 sentiment_client=client,
@@ -121,24 +122,26 @@ class TestImportPipelineAutoTriggersSentimentClassification:
         monkeypatch.setenv("DATABASE_URL", postgres_dsn)
         raw_row = _raw_row("Already imported day message")
 
-        first_run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
+        first_run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv", visitor_id="test-visitor")
         asyncio.run(
             run_import_pipeline(
                 run_id=first_run_id,
                 keyword="day",
+                visitor_id="test-visitor",
                 source_filename="test.csv",
                 rows=[raw_row],
                 sentiment_client=FakeClient(),
             )
         )
 
-        second_run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
+        second_run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv", visitor_id="test-visitor")
         client = FakeClient()
         theme_client = FakeThemeClient()
         result = asyncio.run(
             run_import_pipeline(
                 run_id=second_run_id,
                 keyword="day",
+                visitor_id="test-visitor",
                 source_filename="test.csv",
                 rows=[raw_row],
                 sentiment_client=client,

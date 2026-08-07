@@ -8,12 +8,14 @@ def get_connection() -> psycopg.Connection:
     return psycopg.connect(os.environ["DATABASE_URL"])
 
 
-def create_import_run(conn: psycopg.Connection, *, keyword: str, source_filename: str) -> int:
+def create_import_run(
+    conn: psycopg.Connection, *, keyword: str, source_filename: str, visitor_id: str
+) -> int:
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO import_runs (keyword, source_filename, status, started_at) "
-            "VALUES (%s, %s, 'running', %s) RETURNING id",
-            (keyword, source_filename, datetime.now(timezone.utc)),
+            "INSERT INTO import_runs (keyword, source_filename, visitor_id, status, started_at) "
+            "VALUES (%s, %s, %s, 'running', %s) RETURNING id",
+            (keyword, source_filename, visitor_id, datetime.now(timezone.utc)),
         )
         run_id = cur.fetchone()[0]
     conn.commit()

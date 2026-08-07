@@ -22,11 +22,11 @@ async def filter_step(*, rows: list[dict], keyword: str) -> list[dict]:
 
 
 async def dedup_and_write_step(
-    *, run_id: int, source_filename: str, keyword: str, rows: list[dict]
+    *, run_id: int, source_filename: str, keyword: str, visitor_id: str, rows: list[dict]
 ) -> dict:
     conn = get_connection()
     try:
-        inserted_count = insert_messages(conn, run_id, source_filename, keyword, rows)
+        inserted_count = insert_messages(conn, run_id, source_filename, keyword, visitor_id, rows)
     finally:
         conn.close()
     # rows here are already keyword-filtered but pre-dedup, so len(rows) is the
@@ -57,6 +57,7 @@ async def run_import_pipeline(
     run_id: int,
     keyword: str,
     source_filename: str,
+    visitor_id: str,
     rows: list[dict],
     sentiment_client=None,
     theme_client=None,
@@ -73,6 +74,7 @@ async def run_import_pipeline(
             run_id=run_id,
             source_filename=source_filename,
             keyword=keyword,
+            visitor_id=visitor_id,
             rows=filtered,
         )
         await finalize_success_step(

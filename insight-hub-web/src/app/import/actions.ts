@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { importRuns } from "@/db/schema";
+import { getCurrentVisitorId } from "@/lib/visitor";
 
 type SubmitResult = { runId: number; error?: never } | { runId?: never; error: string };
 
@@ -13,9 +14,12 @@ async function callPipelineImport(input: {
   file?: File;
   blobUrl?: string;
 }): Promise<SubmitResult> {
+  const visitorId = await getCurrentVisitorId();
+
   const body = new FormData();
   body.append("keyword", input.keyword);
   body.append("filename", input.filename);
+  body.append("visitor_id", visitorId);
   if (input.file) body.append("file", input.file);
   if (input.blobUrl) body.append("blob_url", input.blobUrl);
 

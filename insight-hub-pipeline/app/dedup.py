@@ -5,6 +5,7 @@ from psycopg import sql
 # Order matters: mirrors the messages table column list in schema.ts.
 INSERT_COLUMNS = (
     "run_id",
+    "visitor_id",
     "source",
     "collected_at",
     "text",
@@ -20,18 +21,22 @@ INSERT_COLUMNS = (
 )
 
 
-def dedup_key(row: dict) -> tuple:
-    return (row["platform"], row["user"], row["text"], row["timestamp"])
+def dedup_key(row: dict, visitor_id: str) -> tuple:
+    # Scopé par visiteur (voir add-visitor-session-scoping) : deux visiteurs
+    # qui importent un contenu identique ne se dédupliquent jamais entre eux.
+    return (visitor_id, row["platform"], row["user"], row["text"], row["timestamp"])
 
 
-def insert_messages(conn, run_id: int, source_filename: str, keyword: str, rows: list[dict]) -> int:
+def insert_messages(
+    conn, run_id: int, source_filename: str, keyword: str, visitor_id: str, rows: list[dict]
+) -> int:
     if not rows:
         return 0
 
     collected_at = datetime.now(timezone.utc)
     query = sql.SQL(
         "INSERT INTO messages ({fields}) VALUES {values} "
-        'ON CONFLICT (platform, "user", text, timestamp) DO NOTHING '
+        'ON CONFLICT (visitor_id, platform, "user", text, timestamp) DO NOTHING '
         "RETURNING id"
     ).format(
         fields=sql.SQL(", ").join(sql.Identifier(c) for c in INSERT_COLUMNS),
@@ -46,6 +51,7 @@ def insert_messages(conn, run_id: int, source_filename: str, keyword: str, rows:
         params.extend(
             [
                 run_id,
+                visitor_id,
                 source_filename,
                 collected_at,
                 row["text"],

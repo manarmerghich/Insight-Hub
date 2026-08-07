@@ -8,6 +8,7 @@ import { getCountryDistribution, getPlatformDistribution } from "@/db/message-di
 import { getMessageSearchResults } from "@/db/message-search";
 import { getDailyNetSentimentEvolution, getNetSentimentScore } from "@/db/net-sentiment-score";
 import { getThemeRiskScores } from "@/db/theme-risk-score";
+import { getCurrentVisitorId } from "@/lib/visitor";
 
 import { ExportDocument } from "@/app/dashboard/pdf/ExportDocument";
 
@@ -33,7 +34,8 @@ export async function GET(request: Request): Promise<NextResponse> {
   const url = new URL(request.url);
   const filters = parseDashboardFilters(toSearchParams(url));
 
-  const latestRun = await getLatestImportRun();
+  const visitorId = await getCurrentVisitorId();
+  const latestRun = await getLatestImportRun(visitorId);
   const runId = latestRun?.id ?? null;
 
   // Aucun import réalisé : erreur explicite plutôt qu'un PDF vide (voir

@@ -21,6 +21,7 @@ async def create_import(
     request: Request,
     keyword: str = Form(...),
     filename: str = Form(...),
+    visitor_id: str = Form(...),
     file: UploadFile | None = File(default=None),
     blob_url: str | None = Form(default=None),
 ):
@@ -29,11 +30,16 @@ async def create_import(
     if not keyword or not keyword.strip():
         raise HTTPException(status_code=400, detail="keyword is required")
 
+    if not visitor_id or not visitor_id.strip():
+        raise HTTPException(status_code=400, detail="visitor_id is required")
+
     if file is None and not blob_url:
         raise HTTPException(status_code=400, detail="file or blob_url is required")
 
     conn = get_connection()
-    run_id = create_import_run(conn, keyword=keyword, source_filename=filename)
+    run_id = create_import_run(
+        conn, keyword=keyword, source_filename=filename, visitor_id=visitor_id
+    )
 
     try:
         if blob_url:
@@ -54,7 +60,7 @@ async def create_import(
         conn.close()
 
     result = await run_import_pipeline(
-        run_id=run_id, keyword=keyword, source_filename=filename, rows=rows
+        run_id=run_id, keyword=keyword, source_filename=filename, visitor_id=visitor_id, rows=rows
     )
 
     return {"run_id": run_id, "status": result["status"]}

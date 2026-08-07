@@ -11,8 +11,8 @@ from tests.conftest import requires_docker
 def _insert_message(conn, *, run_id: int, text: str) -> int:
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO messages (run_id, source, text, timestamp, \"user\", platform, keyword) "
-            "VALUES (%s, 'test.csv', %s, %s, 'user1', 'Twitter', 'day') RETURNING id",
+            "INSERT INTO messages (run_id, visitor_id, source, text, timestamp, \"user\", platform, keyword) "
+            "VALUES (%s, 'test-visitor', 'test.csv', %s, %s, 'user1', 'Twitter', 'day') RETURNING id",
             (run_id, text, datetime.now(timezone.utc)),
         )
         message_id = cur.fetchone()[0]
@@ -46,7 +46,7 @@ class FakeClient:
 @pytest.mark.integration
 class TestSentimentClassificationIntegration:
     def test_resuming_across_two_invocations_does_not_double_count(self, db_conn):
-        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
+        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv", visitor_id="test-visitor")
         message_ids = [
             _insert_message(db_conn, run_id=run_id, text="What a beautiful day"),
             _insert_message(db_conn, run_id=run_id, text="Worst day ever"),
@@ -74,12 +74,12 @@ class TestSentimentClassificationIntegration:
         assert rows == [("positif", "completed"), ("négatif", "completed")]
 
     def test_sentiment_original_untouched_after_reclassification(self, db_conn):
-        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv")
+        run_id = create_import_run(db_conn, keyword="day", source_filename="test.csv", visitor_id="test-visitor")
         with db_conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO messages (run_id, source, text, sentiment_original, timestamp, "
+                "INSERT INTO messages (run_id, visitor_id, source, text, sentiment_original, timestamp, "
                 '"user", platform, keyword) '
-                "VALUES (%s, 'test.csv', 'What a day', 'joy', %s, 'user1', 'Twitter', 'day') "
+                "VALUES (%s, 'test-visitor', 'test.csv', 'What a day', 'joy', %s, 'user1', 'Twitter', 'day') "
                 "RETURNING id",
                 (run_id, datetime.now(timezone.utc)),
             )
